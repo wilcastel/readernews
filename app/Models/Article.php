@@ -38,4 +38,9 @@ class Article extends Model
             ->withPivot(['is_read', 'is_saved', 'is_favorite'])
             ->withTimestamps();
     }
+
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class);
+    }
 }
