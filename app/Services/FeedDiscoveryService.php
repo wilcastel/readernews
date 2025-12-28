@@ -9,6 +9,15 @@ class FeedDiscoveryService
 {
     public function discover(string $url): array
     {
+        // Special Handling for YouTube
+        if (str_contains($url, 'youtube.com/') || str_contains($url, 'youtu.be/')) {
+            $youtubeFeed = $this->discoverYoutubeFeed($url);
+            if ($youtubeFeed) {
+                // Now run standard discovery on the XML feed URL we found
+                return $this->discover($youtubeFeed);
+            }
+        }
+
         // 1. Try to fetch as RSS directly
         $feed = new SimplePie();
         $feed->set_feed_url($url);
@@ -81,5 +90,38 @@ class FeedDiscoveryService
         // Simple Google Favicon service fallback
         $domain = parse_url($url, PHP_URL_HOST);
         return "https://www.google.com/s2/favicons?domain={$domain}&sz=64";
+    }
+
+    protected function discoverYoutubeFeed(string $url): ?string
+    {
+        // 1. If it's already a feed URL
+        if (str_contains($url, 'feeds/videos.xml')) return $url;
+
+        // 2. Channel URL: youtube.com/channel/CHANNEL_ID
+        if (preg_match('/youtube\.com\/channel\/([a-zA-Z0-9_-]+)/', $url, $matches)) {
+            return 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $matches[1];
+        }
+
+        // 3. User URL: youtube.com/user/USERNAME
+        if (preg_match('/youtube\.com\/user\/([a-zA-Z0-9_-]+)/', $url, $matches)) {
+            return 'https://www.youtube.com/feeds/videos.xml?user=' . $matches[1];
+        }
+        
+        // 4. Handle @username or Custom URL - We need to scrape the channel ID
+        // youtube.com/@username or youtube.com/c/custom
+        try {
+            $response = Http::withoutVerifying()->get($url);
+            $html = $response->body();
+            
+            // Check for channelId meta tag
+            if (preg_match('/<meta itemprop="channelId" content="([^"]+)"/', $html, $matches) || 
+                preg_match('/"channelId":"([^"]+)"/', $html, $matches)) {
+                return 'https://www.youtube.com/feeds/videos.xml?channel_id=' . $matches[1];
+            }
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        return null;
     }
 }

@@ -50,3 +50,9 @@ Para lograr el objetivo de seguir sitios sin feeds RSS:
     - Servicio para comunicarse con Ollama.
     - Prompt para extraer estructura de noticias de HTML crudo.
     - Integración en el Job de actualización.
+
+## Futuras Mejoras (V2)
+### Transcripción IA para YouTube
+- Implementar un servicio que extraiga los subtítulos (transcripts) de los videos de YouTube.
+- Utilizar herramientas como `yt-dlp` o APIs de terceros.
+- Procesar el texto extraído con la IA Local para generar un "Resumen de lectura" del video, permitiendo "leer" el contenido del video sin verlo completo.

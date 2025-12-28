@@ -13,7 +13,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Open Sans', 'Roboto', 'sans-serif', ...defaultTheme.fontFamily.sans],
             },
             colors: {
                 surface: {

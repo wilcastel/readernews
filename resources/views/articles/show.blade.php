@@ -1,19 +1,19 @@
 <x-layout title="{{ $article->title }}">
     <x-slot name="headerActions">
-        <div class="flex items-center gap-4 mr-4 pr-4 border-r border-surface-200">
-            <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-2 text-surface-500 hover:text-surface-900 transition-colors font-medium text-sm whitespace-nowrap">
+        <div class="flex items-center gap-4 mr-4 pr-4 border-r border-surface-200 dark:border-surface-700">
+            <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-2 text-surface-500 hover:text-surface-900 dark:text-surface-400 dark:hover:text-surface-100 transition-colors font-medium text-sm whitespace-nowrap">
                 <ion-icon name="arrow-back-outline"></ion-icon>
                 <span class="hidden md:inline">Back</span>
             </a>
             
-            <div class="flex items-center gap-1 bg-surface-100 rounded-lg p-0.5">
+            <div class="flex items-center gap-1 bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5">
                 <a href="{{ $previous ? route('articles.show', $previous) : '#' }}" 
-                   class="p-1.5 rounded-md hover:bg-white transition-colors {{ !$previous ? 'opacity-50 pointer-events-none' : 'text-surface-700' }}"
+                   class="p-1.5 rounded-md hover:bg-white dark:hover:bg-surface-700 transition-colors {{ !$previous ? 'opacity-50 pointer-events-none' : 'text-surface-700 dark:text-surface-200' }}"
                    title="Previous Article">
                    <ion-icon name="chevron-up-outline"></ion-icon>
                 </a>
                 <a href="{{ $next ? route('articles.show', $next) : '#' }}" 
-                   class="p-1.5 rounded-md hover:bg-white transition-colors {{ !$next ? 'opacity-50 pointer-events-none' : 'text-surface-700' }}"
+                   class="p-1.5 rounded-md hover:bg-white dark:hover:bg-surface-700 transition-colors {{ !$next ? 'opacity-50 pointer-events-none' : 'text-surface-700 dark:text-surface-200' }}"
                    title="Next Article">
                    <ion-icon name="chevron-down-outline"></ion-icon>
                 </a>
@@ -55,8 +55,43 @@
             }
          }">
         
-        <!-- Header Image -->
-        @if($article->image_url)
+        <!-- Header Image or Video -->
+        @php
+            $isYoutube = str_contains($article->url, 'youtube.com') || str_contains($article->url, 'youtu.be');
+            $videoId = null;
+            if ($isYoutube) {
+                if (preg_match('/v=([a-zA-Z0-9_-]+)/', $article->url, $matches)) {
+                    $videoId = $matches[1];
+                } elseif (preg_match('/youtu\.be\/([a-zA-Z0-9_-]+)/', $article->url, $matches)) {
+                    $videoId = $matches[1];
+                }
+            }
+        @endphp
+
+        @if($isYoutube && $videoId)
+             <div class="w-full aspect-video bg-black relative z-10">
+                <iframe 
+                    class="w-full h-full"
+                    src="https://www.youtube.com/embed/{{ $videoId }}?autoplay=0" 
+                    title="YouTube video player" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+            </div>
+            <div class="p-8 pb-4 border-b border-surface-100 dark:border-surface-800">
+                <div class="flex items-center gap-2 mb-3 text-primary-600 dark:text-primary-400">
+                     @if($article->feed->favicon)
+                        <img src="{{ $article->feed->favicon }}" class="w-4 h-4 rounded-sm" alt="Favicon">
+                    @endif
+                    <span class="text-sm font-medium uppercase tracking-wider">{{ $article->feed->name }}</span>
+                </div>
+                 <h1 class="text-3xl md:text-4xl font-bold font-serif leading-tight text-surface-900 dark:text-white">
+                    {{ $article->title }}
+                </h1>
+            </div>
+        
+        @elseif($article->image_url)
             <div class="h-64 md:h-80 w-full relative">
                 <img src="{{ $article->image_url }}" class="w-full h-full object-cover" alt="Article Header">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
@@ -138,7 +173,7 @@
         <div class="p-6 md:p-10">
             
             <!-- Full Content Placeholder / Display -->
-            <div id="article-content" class="prose dark:prose-invert prose-lg max-w-none font-serif leading-loose text-surface-800 dark:text-surface-300
+            <div id="article-content" class="prose dark:prose-invert prose-xl max-w-none font-sans leading-relaxed text-surface-800 dark:text-surface-300
                 prose-iframe:w-full prose-iframe:aspect-video prose-iframe:rounded-xl prose-img:rounded-xl">
                 @if($article->content)
                     {!! $article->content !!}
