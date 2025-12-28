@@ -180,7 +180,20 @@
                             });
                         }]); 
                     }])->get() as $folder)
-                    <div x-data="{ open: {{ (request()->is('folder/'.$folder->id) || $folder->feeds->contains(fn($f) => request()->is('feed/'.$f->id))) ? 'true' : 'false' }} }">
+                    <div x-data="{ 
+                        key: 'folder_{{ $folder->id }}_open',
+                        open: false,
+                        init() {
+                            const stored = localStorage.getItem(this.key);
+                            if (stored === null) {
+                                // Default logic: open if active
+                                this.open = {{ (request()->is('folder/'.$folder->id) || $folder->feeds->contains(fn($f) => request()->is('feed/'.$f->id))) ? 'true' : 'false' }};
+                            } else {
+                                this.open = stored === 'true';
+                            }
+                            this.$watch('open', val => localStorage.setItem(this.key, val));
+                        }
+                    }">
                         <div class="group flex items-center justify-between px-3 py-1.5 text-sm font-medium rounded-lg {{ request()->is('folder/'.$folder->id) ? 'text-primary-600 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400' }} hover:text-surface-900 dark:hover:text-white transition-colors cursor-pointer" @click="open = !open">
                             <div class="flex items-center flex-1 gap-2">
                                 <ion-icon :name="open ? 'chevron-down' : 'chevron-forward'" class="text-xs transition-transform"></ion-icon>

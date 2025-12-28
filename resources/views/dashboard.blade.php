@@ -64,7 +64,7 @@
                     });
                 }
             }"
-            :class="read ? 'opacity-75' : ''"
+            :class="read ? 'opacity-60 grayscale' : ''"
             class="bg-white dark:bg-surface-900 rounded-xl shadow-sm border border-surface-200 dark:border-surface-800 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer h-full flex flex-col">
             @if($article->image_url)
             <div class="aspect-video bg-surface-200 dark:bg-surface-800 relative overflow-hidden">
