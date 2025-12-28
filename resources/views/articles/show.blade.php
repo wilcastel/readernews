@@ -143,6 +143,30 @@
                         method: 'POST', 
                         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } 
                     });
+                },
+                newTag: '',
+                tags: {{ Js::from($article->tags()->where('user_id', auth()->id())->pluck('name')) }},
+                addTag() {
+                    if (!this.newTag) return;
+                    const tagToAdd = this.newTag;
+                    this.newTag = ''; // Clear input immediately
+                    
+                    if (!this.tags.includes(tagToAdd)) {
+                        this.tags.push(tagToAdd);
+                    }
+                    
+                     fetch('/articles/{{ $article->id }}/toggle-tag', { 
+                        method: 'POST', 
+                        headers: { 
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ tag_name: tagToAdd })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        // Optional: sync state if needed
+                    });
                 }
              }">
             <div class="flex items-center gap-4 text-sm text-surface-500 dark:text-surface-400">
@@ -150,6 +174,29 @@
                 <span>•</span>
                 <span>{{ $article->published_at?->format('F j, Y, g:i a') }}</span>
             </div>
+
+            <!-- Tags UI -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <template x-for="tag in tags">
+                     <a :href="'/tags/' + tag.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')" class="px-2 py-1 bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-200 text-xs rounded-full hover:bg-surface-300 dark:hover:bg-surface-600 transition-colors flex items-center gap-1">
+                        <ion-icon name="pricetag-outline"></ion-icon>
+                        <span x-text="tag"></span>
+                     </a>
+                </template>
+                
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" class="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                        <ion-icon name="add"></ion-icon> Tag
+                    </button>
+                    <div x-show="open" @click.outside="open = false" 
+                         class="absolute top-full left-0 mt-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg p-2 z-20 w-48">
+                         <input type="text" x-model="newTag" @keydown.enter="addTag(); open = false" 
+                                class="w-full px-2 py-1 text-xs border rounded dark:bg-surface-900 dark:border-surface-600 dark:text-white" 
+                                placeholder="New tag..." autofocus>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex items-center gap-2">
                  <a href="{{ $article->url }}" target="_blank" class="px-3 py-1.5 rounded-lg text-sm font-medium text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors flex items-center gap-2">
                     <ion-icon name="open-outline"></ion-icon> Visit Original

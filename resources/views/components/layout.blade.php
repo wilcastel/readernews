@@ -252,6 +252,25 @@
                             </button>
                         </div>
                         @endforeach
+
+                        <!-- Tags Section -->
+                        @if(auth()->user()->tags()->count() > 0)
+                            <div class="px-3 text-[10px] font-semibold text-surface-400 uppercase tracking-wider mt-6 mb-2">Tags</div>
+                            @foreach(auth()->user()->tags as $tag)
+                                <div class="group flex items-center justify-between px-3 py-1.5 text-sm font-medium rounded-lg {{ request()->routeIs('tags.show') && request()->route('tag')->id == $tag->id ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800' }} transition-colors">
+                                    <a href="{{ route('tags.show', $tag) }}" class="flex items-center gap-2 flex-1 truncate">
+                                        <ion-icon name="pricetag-outline" class="text-surface-400"></ion-icon>
+                                        {{ $tag->name }}
+                                    </a>
+                                     <form action="{{ route('tags.destroy', $tag) }}" method="POST" class="opacity-0 group-hover:opacity-100 transition-opacity" onsubmit="return confirm('Delete tag?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-surface-400 hover:text-red-500 p-1"><ion-icon name="close-outline"></ion-icon></button>
+                                    </form>
+                                </div>
+                            @endforeach
+                        @endif
+
                         @endauth
                     </div>
                 </div>

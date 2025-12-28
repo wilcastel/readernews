@@ -82,6 +82,21 @@
                 <h2 class="text-xl font-bold font-serif mb-3 text-surface-900 dark:text-white leading-tight group-hover:text-primary-600 transition-colors">
                     <a href="{{ route('articles.show', $article) }}" @click="markRead()">{{ $article->title }}</a>
                 </h2>
+                
+                <!-- Tags on Card -->
+                @php
+                    $userTags = $article->tags->where('user_id', auth()->id());
+                @endphp
+                @if($userTags->count() > 0)
+                <div class="flex flex-wrap gap-1 mb-3">
+                    @foreach($userTags as $tag)
+                        <span class="px-1.5 py-0.5 bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 text-[10px] rounded hover:bg-surface-200 dark:hover:bg-surface-700">
+                            #{{ $tag->name }}
+                        </span>
+                    @endforeach
+                </div>
+                @endif
+
                 <p class="text-surface-500 text-sm line-clamp-3 mb-4 flex-1">
                     {{ Str::limit($article->summary, 150) }}
                 </p>
