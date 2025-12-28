@@ -98,7 +98,16 @@ class FeedController extends Controller
             ->latest('published_at')
             ->simplePaginate(30);
             
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'feed'));
+    }
+
+    public function refresh(Feed $feed)
+    {
+        abort_if($feed->user_id !== auth()->id(), 403);
+        
+        \App\Jobs\FetchFeedArticles::dispatch($feed);
+        
+        return back()->with('success', 'Refreshing ' . $feed->name . '...');
     }
 
     public function store(\Illuminate\Http\Request $request, \App\Services\FeedDiscoveryService $discovery)

@@ -19,6 +19,15 @@
                 <p class="text-surface-500 font-medium">{{ \Carbon\Carbon::now()->toFormattedDateString() }}</p>
             </div>
             <div class="flex gap-2">
+                @if(isset($feed))
+                <form action="{{ route('feeds.refresh', $feed) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-primary-600 dark:hover:text-primary-400 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
+                        <ion-icon name="refresh-outline"></ion-icon>
+                        Refresh
+                    </button>
+                </form>
+                @endif
                 <button @click="openAddModal = true" class="cursor-pointer bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2 transition-all">
                     <ion-icon name="add-outline"></ion-icon>
                     Add Source
