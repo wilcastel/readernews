@@ -1,19 +1,19 @@
 <x-layout title="{{ $article->title }}">
     <x-slot name="headerActions">
-        <div class="flex items-center gap-4 mr-4 pr-4 border-r border-surface-200 dark:border-surface-700">
-            <a href="{{ route('home') }}" class="inline-flex items-center gap-2 text-surface-500 hover:text-surface-900 dark:hover:text-white transition-colors font-medium text-sm whitespace-nowrap">
+        <div class="flex items-center gap-4 mr-4 pr-4 border-r border-surface-200">
+            <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-2 text-surface-500 hover:text-surface-900 transition-colors font-medium text-sm whitespace-nowrap">
                 <ion-icon name="arrow-back-outline"></ion-icon>
                 <span class="hidden md:inline">Back</span>
             </a>
             
-            <div class="flex items-center gap-1 bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5">
+            <div class="flex items-center gap-1 bg-surface-100 rounded-lg p-0.5">
                 <a href="{{ $previous ? route('articles.show', $previous) : '#' }}" 
-                   class="p-1.5 rounded-md hover:bg-white dark:hover:bg-surface-700 transition-colors {{ !$previous ? 'opacity-50 pointer-events-none' : 'text-surface-700 dark:text-surface-200' }}"
+                   class="p-1.5 rounded-md hover:bg-white transition-colors {{ !$previous ? 'opacity-50 pointer-events-none' : 'text-surface-700' }}"
                    title="Previous Article">
                    <ion-icon name="chevron-up-outline"></ion-icon>
                 </a>
                 <a href="{{ $next ? route('articles.show', $next) : '#' }}" 
-                   class="p-1.5 rounded-md hover:bg-white dark:hover:bg-surface-700 transition-colors {{ !$next ? 'opacity-50 pointer-events-none' : 'text-surface-700 dark:text-surface-200' }}"
+                   class="p-1.5 rounded-md hover:bg-white transition-colors {{ !$next ? 'opacity-50 pointer-events-none' : 'text-surface-700' }}"
                    title="Next Article">
                    <ion-icon name="chevron-down-outline"></ion-icon>
                 </a>
@@ -74,7 +74,7 @@
             </div>
         @else
             <div class="p-8 pb-4 border-b border-surface-100 dark:border-surface-800">
-                <div class="flex items-center gap-2 mb-3 text-primary-600">
+                <div class="flex items-center gap-2 mb-3 text-primary-600 dark:text-primary-400">
                      @if($article->feed->favicon)
                         <img src="{{ $article->feed->favicon }}" class="w-4 h-4 rounded-sm" alt="Favicon">
                     @endif
@@ -86,10 +86,15 @@
             </div>
         @endif
 
-        <div class="px-6 py-4 bg-surface-50 dark:bg-surface-950 flex flex-wrap items-center justify-between gap-4 border-b border-surface-200 dark:border-surface-800"
+        <div class="px-6 py-4 bg-surface-50 dark:bg-surface-800 flex flex-wrap items-center justify-between gap-4 border-b border-surface-200 dark:border-surface-800"
              x-data="{ 
-                saved: {{ $article->is_saved ? 'true' : 'false' }},
-                favorite: {{ $article->is_favorite ? 'true' : 'false' }},
+                @php
+                    $userPivot = $article->users->first()?->pivot;
+                    $isSaved = $userPivot->is_saved ?? false;
+                    $isFavorite = $userPivot->is_favorite ?? false;
+                @endphp
+                saved: {{ $isSaved ? 'true' : 'false' }},
+                favorite: {{ $isFavorite ? 'true' : 'false' }},
                 toggleSaved() {
                     this.saved = !this.saved;
                     fetch('/articles/{{ $article->id }}/toggle-saved', { 
@@ -105,25 +110,25 @@
                     });
                 }
              }">
-            <div class="flex items-center gap-4 text-sm text-surface-500">
+            <div class="flex items-center gap-4 text-sm text-surface-500 dark:text-surface-400">
                 <span>{{ $article->author ?? 'Unknown Author' }}</span>
                 <span>•</span>
                 <span>{{ $article->published_at?->format('F j, Y, g:i a') }}</span>
             </div>
             <div class="flex items-center gap-2">
-                 <a href="{{ $article->url }}" target="_blank" class="px-3 py-1.5 rounded-lg text-sm font-medium text-surface-600 hover:bg-surface-200 dark:text-surface-400 dark:hover:bg-surface-800 transition-colors flex items-center gap-2">
+                 <a href="{{ $article->url }}" target="_blank" class="px-3 py-1.5 rounded-lg text-sm font-medium text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors flex items-center gap-2">
                     <ion-icon name="open-outline"></ion-icon> Visit Original
                 </a>
                 
                  <button @click="toggleFavorite()" 
                     class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                    :class="favorite ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : 'text-surface-600 hover:bg-surface-200 dark:text-surface-400 dark:hover:bg-surface-800'">
+                    :class="favorite ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : 'text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'">
                     <ion-icon :name="favorite ? 'star' : 'star-outline'"></ion-icon> <span x-text="favorite ? 'Favorited' : 'Favorite'"></span>
                 </button>
 
                  <button @click="toggleSaved()" 
                     class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                    :class="saved ? 'text-primary-700 bg-primary-100 dark:bg-primary-900/30' : 'text-primary-600 bg-primary-50 dark:bg-primary-900/10 hover:bg-primary-100'">
+                    :class="saved ? 'text-primary-700 bg-primary-100 dark:text-primary-300 dark:bg-primary-900/20' : 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/10 hover:bg-primary-100 dark:hover:bg-primary-900/30'">
                     <ion-icon :name="saved ? 'bookmark' : 'bookmark-outline'"></ion-icon> <span x-text="saved ? 'Saved' : 'Save'"></span>
                 </button>
             </div>
@@ -133,26 +138,26 @@
         <div class="p-6 md:p-10">
             
             <!-- Full Content Placeholder / Display -->
-            <div id="article-content" class="prose dark:prose-invert prose-lg max-w-none font-serif leading-loose text-surface-800 dark:text-surface-200 
+            <div id="article-content" class="prose dark:prose-invert prose-lg max-w-none font-serif leading-loose text-surface-800 dark:text-surface-300
                 prose-iframe:w-full prose-iframe:aspect-video prose-iframe:rounded-xl prose-img:rounded-xl">
                 @if($article->content)
                     {!! $article->content !!}
                 @else
-                    <div class="text-xl font-sans text-surface-600 dark:text-surface-400 mb-8 leading-relaxed">
+                    <div class="text-xl font-sans text-surface-600 mb-8 leading-relaxed">
                         {{ $article->summary }}
                     </div>
                 @endif
             </div>
 
             <!-- Fetch Button (Always visible to allow upgrading content) -->
-            <div class="mt-12 text-center py-8 border-t border-dashed border-surface-200 dark:border-surface-800">
+            <div class="mt-12 text-center py-8 border-t border-dashed border-surface-200">
                 <div class="mb-4 text-sm text-surface-500 font-medium" x-show="!hasContent">Viewing summary. Read the full story?</div>
                 <div class="mb-4 text-sm text-surface-500 font-medium" x-show="hasContent">Missing something? Try extracting the full article from source.</div>
                 
                 <button @click="fetchContent()" :disabled="fetching" 
                     class="group relative inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium shadow-sm transition-all
-                           bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200
-                           hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 hover:shadow-md
+                           bg-white border border-surface-200 text-surface-700
+                           hover:border-primary-500 hover:text-primary-600 hover:shadow-md
                            disabled:opacity-50 disabled:cursor-not-allowed">
                     
                     <ion-icon name="flash-outline" class="text-primary-500 group-hover:animate-pulse" x-show="!fetching"></ion-icon>

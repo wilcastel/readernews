@@ -31,4 +31,11 @@ class Article extends Model
     {
         return $this->belongsTo(Feed::class);
     }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class)
+            ->withPivot(['is_read', 'is_saved', 'is_favorite'])
+            ->withTimestamps();
+    }
 }

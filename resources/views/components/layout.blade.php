@@ -7,6 +7,15 @@
 
     <title>{{ $title ?? 'ReaderNews' }}</title>
 
+    <!-- Dark Mode Script (Prevents Flash) -->
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
     <!-- Premium Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,7 +29,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="h-full font-sans antialiased text-surface-900 dark:text-surface-100 flex overflow-hidden"
+<body class="h-full font-sans antialiased text-surface-900 dark:text-surface-100 dark:bg-surface-950 flex overflow-hidden"
       x-data="{ 
         openAddModal: false,
         openEditModal: false,
@@ -45,17 +54,19 @@
                     <div>
                         <label class="block text-xs font-semibold text-surface-500 uppercase mb-1">Name</label>
                         <input type="text" name="name" x-model="editingFeed.name" required
-                            class="w-full px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm focus:outline-none focus:border-primary-500">
+                            class="w-full px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm focus:outline-none focus:border-primary-500 dark:text-white">
                     </div>
 
                     <div>
                         <label class="block text-xs font-semibold text-surface-500 uppercase mb-1">Folder</label>
                         <select name="folder_id" x-model="editingFeed.folder_id"
-                            class="w-full px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm focus:outline-none focus:border-primary-500 text-surface-700 dark:text-surface-300">
+                            class="w-full px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-sm focus:outline-none focus:border-primary-500 text-surface-700 dark:text-surface-200">
                             <option value="">Uncategorized</option>
-                            @foreach(\App\Models\Folder::all() as $f)
-                                <option value="{{ $f->id }}">{{ $f->name }}</option>
-                            @endforeach
+                            @auth
+                                @foreach(auth()->user()->folders as $f)
+                                    <option value="{{ $f->id }}">{{ $f->name }}</option>
+                                @endforeach
+                            @endauth
                         </select>
                     </div>
                 </div>
@@ -63,7 +74,7 @@
                 <div class="flex justify-between items-center mt-6">
                     <button type="button" @click="$el.closest('form').nextElementSibling.submit()" class="text-red-500 hover:text-red-600 text-sm font-medium">Delete Feed</button>
                     <div class="flex gap-2">
-                        <button type="button" @click="openEditModal = false" class="px-3 py-2 text-sm text-surface-600 hover:text-surface-900 dark:text-surface-400 dark:hover:text-white">Cancel</button>
+                        <button type="button" @click="openEditModal = false" class="px-3 py-2 text-sm text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white">Cancel</button>
                         <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
                     </div>
                 </div>
@@ -92,7 +103,7 @@
                         class="w-full pl-10 pr-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all">
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" @click="openAddModal = false" class="px-4 py-2 text-surface-600 hover:text-surface-900 dark:text-surface-400 dark:hover:text-white font-medium">Cancel</button>
+                    <button type="button" @click="openAddModal = false" class="px-4 py-2 text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white font-medium">Cancel</button>
                     <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">Follow</button>
                 </div>
             </form>
@@ -107,7 +118,7 @@
     </script>
     
     <!-- Sidebar -->
-    <aside class="w-64 flex-shrink-0 border-r border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 flex flex-col z-20">
+    <aside class="w-64 flex-shrink-0 border-r border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 flex flex-col z-20 transition-colors duration-300">
         <div class="h-16 flex items-center px-6 border-b border-surface-200 dark:border-surface-800">
             <div class="flex items-center gap-2 text-primary-600 dark:text-primary-400">
                 <ion-icon name="newspaper-outline" class="text-2xl"></ion-icon>
@@ -120,15 +131,15 @@
             <div>
                 <div class="px-3 mb-2 text-xs font-semibold text-surface-400 uppercase tracking-wider">Library</div>
                 <div class="space-y-1">
-                    <a href="{{ route('home') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('home') ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/10 dark:text-primary-400' : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800 transition-colors' }}">
+                    <a href="{{ route('dashboard') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('dashboard') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
                         <ion-icon name="grid-outline" class="text-lg"></ion-icon>
                         All Articles
                     </a>
-                    <a href="{{ route('saved') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('saved') ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/10 dark:text-primary-400' : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800 transition-colors' }}">
+                    <a href="{{ route('saved') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('saved') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
                         <ion-icon name="bookmark-outline" class="text-lg"></ion-icon>
                         Saved for Later
                     </a>
-                    <a href="{{ route('favorites') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('favorites') ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/10 dark:text-primary-400' : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800 transition-colors' }}">
+                    <a href="{{ route('favorites') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('favorites') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
                         <ion-icon name="star-outline" class="text-lg"></ion-icon>
                         Favorites
                     </a>
@@ -156,12 +167,19 @@
                 <!-- Quick Create Folder Form -->
                 <form id="create-folder-form" action="{{ route('folders.store') }}" method="POST" class="hidden px-3 mb-2">
                     @csrf
-                    <input type="text" name="name" placeholder="Folder Name..." class="w-full px-2 py-1 text-xs rounded border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800" onkeydown="if(event.key === 'Enter') this.form.submit()">
+                    <input type="text" name="name" placeholder="Folder Name..." class="w-full px-2 py-1 text-xs rounded border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 dark:text-white" onkeydown="if(event.key === 'Enter') this.form.submit()">
                 </form>
 
                 <div class="space-y-4">
                     <!-- Folders Loop -->
-                    @foreach(\App\Models\Folder::with(['feeds' => function($q) { $q->withCount(['articles' => fn($a) => $a->where('is_read', false)]); }])->get() as $folder)
+                    @auth
+                    @foreach(auth()->user()->folders()->with(['feeds' => function($q) { 
+                        $q->withCount(['articles' => function($a) {
+                            $a->whereDoesntHave('users', function($u) {
+                                $u->where('user_id', auth()->id())->where('is_read', true);
+                            });
+                        }]); 
+                    }])->get() as $folder)
                     <div x-data="{ open: {{ (request()->is('folder/'.$folder->id) || $folder->feeds->contains(fn($f) => request()->is('feed/'.$f->id))) ? 'true' : 'false' }} }">
                         <div class="group flex items-center justify-between px-3 py-1.5 text-sm font-medium rounded-lg {{ request()->is('folder/'.$folder->id) ? 'text-primary-600 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400' }} hover:text-surface-900 dark:hover:text-white transition-colors cursor-pointer" @click="open = !open">
                             <div class="flex items-center flex-1 gap-2">
@@ -181,7 +199,7 @@
                         <div x-show="open" class="space-y-0.5 ml-2 border-l border-surface-200 dark:border-surface-800 pl-2 mt-1">
                             @foreach($folder->feeds as $feed)
                                 <div class="relative group/feed">
-                                    <a href="{{ route('feed.show', $feed) }}" class="flex items-center justify-between px-2 py-1.5 text-sm rounded-lg {{ request()->is('feed/'.$feed->id) ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/10 dark:text-primary-400' : 'text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800' }} transition-colors pr-8">
+                                    <a href="{{ route('feed.show', $feed) }}" class="flex items-center justify-between px-2 py-1.5 text-sm rounded-lg {{ request()->is('feed/'.$feed->id) ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800' }} transition-colors pr-8">
                                         <div class="flex items-center gap-2 overflow-hidden">
                                             @if($feed->favicon)
                                                 <img src="{{ $feed->favicon }}" class="w-3.5 h-3.5 rounded-sm flex-shrink-0" alt="Icon" onerror="this.style.display='none'">
@@ -201,16 +219,18 @@
                         </div>
                     </div>
                     @endforeach
+                    @endauth
 
                     <!-- Unorganized Feeds -->
                     <div class="space-y-1">
-                         @if(\App\Models\Folder::count() > 0)
+                         @auth
+                         @if(auth()->user()->folders()->count() > 0)
                             <div class="px-3 text-[10px] font-semibold text-surface-400 uppercase tracking-wider mt-4">Uncategorized</div>
                          @endif
 
-                         @foreach(\App\Models\Feed::whereNull('folder_id')->withCount(['articles' => fn($q) => $q->where('is_read', false)])->get() as $feed)
+                         @foreach(auth()->user()->feeds()->whereNull('folder_id')->withCount(['articles' => fn($a) => $a->whereDoesntHave('users', fn($u) => $u->where('user_id', auth()->id())->where('is_read', true))])->get() as $feed)
                         <div class="relative group/feed">
-                            <a href="{{ route('feed.show', $feed) }}" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ request()->is('feed/'.$feed->id) ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/10 dark:text-primary-400' : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800' }} transition-colors pr-8">
+                            <a href="{{ route('feed.show', $feed) }}" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ request()->is('feed/'.$feed->id) ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800' }} transition-colors pr-8">
                                 <div class="flex items-center gap-3 overflow-hidden">
                                     @if($feed->favicon)
                                         <img src="{{ $feed->favicon }}" class="w-4 h-4 rounded-sm flex-shrink-0" alt="Icon" onerror="this.style.display='none'">
@@ -232,26 +252,44 @@
                             </button>
                         </div>
                         @endforeach
+                        @endauth
                     </div>
                 </div>
             </div>
         </nav>
 
-        <div class="p-4 border-t border-surface-200 dark:border-surface-800">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary-500 to-purple-500"></div>
-                <div>
-                    <div class="text-sm font-medium">User</div>
-                    <div class="text-xs text-surface-500">Free Plan</div>
+        <div class="p-4 border-t border-surface-200 dark:border-surface-800 dark:text-surface-300">
+            @auth
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                        {{ substr(auth()->user()->name, 0, 2) }}
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="text-sm font-medium truncate w-24">{{ auth()->user()->name }}</div>
+                    </div>
                 </div>
+                <!-- Logout Form -->
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="text-surface-400 hover:text-red-500 transition-colors p-1" title="Log Out">
+                        <ion-icon name="log-out-outline" class="text-xl"></ion-icon>
+                    </button>
+                </form>
             </div>
+            @else
+            <div class="flex flex-col gap-2">
+                <a href="{{ route('login') }}" class="w-full bg-surface-100 hover:bg-surface-200 text-surface-900 dark:bg-surface-800 dark:hover:bg-surface-700 py-2 rounded-lg text-sm font-medium text-center transition-colors dark:text-white">Log In</a>
+                <a href="{{ route('register') }}" class="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg text-sm font-medium text-center transition-colors">Sign Up</a>
+            </div>
+            @endauth
         </div>
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col min-w-0 bg-surface-50 dark:bg-surface-950 overflow-hidden relative">
+    <main class="flex-1 flex flex-col min-w-0 bg-surface-50 dark:bg-surface-950 overflow-hidden relative transition-colors duration-300">
         <!-- Top Header for Search/Actions -->
-        <header class="h-16 flex items-center justify-between px-6 border-b border-surface-200 dark:border-surface-800 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md sticky top-0 z-10">
+        <header class="h-16 flex items-center justify-between px-6 border-b border-surface-200 dark:border-surface-800 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md sticky top-0 z-10 transition-colors duration-300">
             <div class="flex items-center gap-4 flex-1">
                 <button class="lg:hidden text-2xl text-surface-500">
                     <ion-icon name="menu-outline"></ion-icon>
@@ -263,14 +301,37 @@
 
                 <div class="relative max-w-md w-full">
                     <ion-icon name="search-outline" class="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"></ion-icon>
-                    <input type="text" placeholder="Search articles..." class="w-full pl-10 pr-4 py-2 rounded-full border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all">
+                    <input type="text" placeholder="Search articles..." class="w-full pl-10 pr-4 py-2 rounded-full border border-surface-200 bg-surface-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all">
                 </div>
             </div>
             <div class="flex items-center gap-3">
-                <button class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 transition-colors">
+                <button class="p-2 rounded-full hover:bg-surface-100 text-surface-500 transition-colors"
+                        @click="
+                            if (document.documentElement.classList.contains('dark')) {
+                                document.documentElement.classList.remove('dark');
+                                localStorage.theme = 'light';
+                            } else {
+                                document.documentElement.classList.add('dark');
+                                localStorage.theme = 'dark';
+                            }
+                        "
+                        x-data="{
+                            init() {
+                                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                                    document.documentElement.classList.add('dark');
+                                } else {
+                                    document.documentElement.classList.remove('dark');
+                                }
+                            }
+                        }"
+                >
+                    <ion-icon name="moon-outline" class="text-xl hidden dark:block"></ion-icon>
+                    <ion-icon name="sunny-outline" class="text-xl block dark:hidden"></ion-icon>
+                </button>
+                <button class="p-2 rounded-full hover:bg-surface-100 text-surface-500 transition-colors">
                     <ion-icon name="refresh-outline" class="text-xl"></ion-icon>
                 </button>
-                <button class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 transition-colors">
+                <button class="p-2 rounded-full hover:bg-surface-100 text-surface-500 transition-colors">
                     <ion-icon name="settings-outline" class="text-xl"></ion-icon>
                 </button>
             </div>

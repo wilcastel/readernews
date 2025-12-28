@@ -55,8 +55,8 @@ class FetchFeedArticles implements ShouldQueue
                 $url = $baseUrl . '/' . ltrim($url, '/');
             }
 
-            // Uniqueness check
-            if (Article::where('url', $url)->exists()) continue;
+            // Uniqueness check per feed
+            if (Article::where('url', $url)->where('feed_id', $this->feed->id)->exists()) continue;
 
             Article::create([
                 'feed_id' => $this->feed->id,
@@ -84,7 +84,7 @@ class FetchFeedArticles implements ShouldQueue
         foreach ($items as $item) {
             $url = $item->get_permalink();
             
-            if (Article::where('url', $url)->exists()) continue;
+            if (Article::where('url', $url)->where('feed_id', $this->feed->id)->exists()) continue;
 
             $image = null;
             if ($enclusure = $item->get_enclosure()) {

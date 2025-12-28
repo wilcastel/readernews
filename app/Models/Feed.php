@@ -13,7 +13,8 @@ class Feed extends Model
         'favicon',
         'folder_id',
         'is_rss',
-        'last_scraped_at'
+        'last_scraped_at',
+        'user_id'
     ];
 
     protected $casts = [

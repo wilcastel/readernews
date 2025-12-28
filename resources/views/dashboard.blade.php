@@ -31,10 +31,15 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         
         @forelse($articles as $article)
+        @php
+            $userPivot = $article->users->first()?->pivot;
+            $isSaved = $userPivot->is_saved ?? false;
+            $isRead = $userPivot->is_read ?? false;
+        @endphp
         <article 
             x-data="{ 
-                saved: {{ $article->is_saved ? 'true' : 'false' }}, 
-                read: {{ $article->is_read ? 'true' : 'false' }},
+                saved: {{ $isSaved ? 'true' : 'false' }}, 
+                read: {{ $isRead ? 'true' : 'false' }},
                 toggleSaved() {
                     this.saved = !this.saved;
                     fetch('/articles/{{ $article->id }}/toggle-saved', { 

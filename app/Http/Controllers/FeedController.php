@@ -14,8 +14,21 @@ class FeedController extends Controller
     public function index()
     {
         $pageTitle = "All Articles";
-        $feeds = Feed::all();
-        $articles = Article::with('feed')->latest('published_at')->simplePaginate(30);
+        // Feeds for sidebar are handled in View Composer or direct call? 
+        // Let's pass them here if we want, but sidebar logic needs update.
+        // For now, let's just make sure we get ARTICLES from user's feeds.
+        
+        $articles = Article::whereHas('feed', function($q) {
+                $q->where('user_id', auth()->id());
+            })
+            ->with(['feed', 'users' => function($q) {
+                $q->where('user_id', auth()->id());
+            }])
+            ->latest('published_at')
+            ->simplePaginate(30);
+
+        // We can pass $feeds for the mobile menu if needed, though layout handles it generally
+        $feeds = auth()->user()->feeds; 
 
         return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
     }
@@ -23,25 +36,48 @@ class FeedController extends Controller
     public function saved()
     {
         $pageTitle = "Saved for Later";
-        $feeds = Feed::all(); // Layout needs feeds
-        $articles = Article::with('feed')->where('is_saved', true)->latest('published_at')->simplePaginate(30);
+        $feeds = auth()->user()->feeds;
+        
+        $articles = Article::whereHas('users', function($q) {
+                $q->where('user_id', auth()->id())->where('is_saved', true);
+            })
+            ->with(['feed', 'users' => function($q) {
+                $q->where('user_id', auth()->id());
+            }])
+            ->latest('published_at')
+            ->simplePaginate(30);
+            
         return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
     }
 
     public function favorites()
     {
         $pageTitle = "Favorites";
-        $feeds = Feed::all(); // Layout needs feeds
-        $articles = Article::with('feed')->where('is_favorite', true)->latest('published_at')->simplePaginate(30);
+        $feeds = auth()->user()->feeds;
+        
+        $articles = Article::whereHas('users', function($q) {
+                $q->where('user_id', auth()->id())->where('is_favorite', true);
+            })
+            ->with(['feed', 'users' => function($q) {
+                $q->where('user_id', auth()->id());
+            }])
+            ->latest('published_at')
+            ->simplePaginate(30);
+            
         return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
     }
 
     public function folder(Folder $folder)
     {
+        abort_if($folder->user_id !== auth()->id(), 403);
+        
         $pageTitle = $folder->name;
-        $feeds = Feed::all();
-        $articles = Article::with('feed')
-            ->whereHas('feed', fn($q) => $q->where('folder_id', $folder->id))
+        $feeds = auth()->user()->feeds;
+        
+        $articles = Article::with(['feed', 'users' => function($q) {
+                 $q->where('user_id', auth()->id());
+            }])
+            ->whereHas('feed', fn($q) => $q->where('folder_id', $folder->id)->where('user_id', auth()->id()))
             ->latest('published_at')
             ->simplePaginate(30);
             
@@ -50,9 +86,18 @@ class FeedController extends Controller
 
     public function feed(Feed $feed)
     {
+        abort_if($feed->user_id !== auth()->id(), 403);
+        
         $pageTitle = $feed->name;
-        $feeds = Feed::all();
-        $articles = $feed->articles()->with('feed')->latest('published_at')->simplePaginate(30);
+        $feeds = auth()->user()->feeds;
+        
+        $articles = $feed->articles()
+            ->with(['feed', 'users' => function($q) {
+                $q->where('user_id', auth()->id());
+            }])
+            ->latest('published_at')
+            ->simplePaginate(30);
+            
         return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
     }
 
@@ -66,8 +111,11 @@ class FeedController extends Controller
             return back()->withErrors(['url' => $info['message']]);
         }
         
-        // Prevent duplicates
-        $existing = \App\Models\Feed::where('url', $info['feed_url'])->first();
+        // Prevent duplicates for this user
+        $existing = \App\Models\Feed::where('url', $info['feed_url'])
+            ->where('user_id', auth()->id())
+            ->first();
+            
         if ($existing) {
              return back()->with('message', 'You are already following this source.');
         }
@@ -78,6 +126,7 @@ class FeedController extends Controller
             'website_url' => $info['site_url'],
             'favicon' => $info['favicon'],
             'is_rss' => $info['type'] === 'rss',
+            'user_id' => auth()->id(),
         ]);
 
         // Fetch articles immediately
@@ -101,6 +150,6 @@ class FeedController extends Controller
     public function destroy(\App\Models\Feed $feed)
     {
         $feed->delete();
-        return back()->with('success', 'Feed removed.');
+        return redirect()->route('dashboard')->with('success', 'Feed removed.');
     }
 }

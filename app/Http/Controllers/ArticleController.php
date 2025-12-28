@@ -12,19 +12,28 @@ class ArticleController extends Controller
 {
     public function show(Article $article)
     {
-        // Mark as read immediately when viewed
-        if (!$article->is_read) {
-            $article->update(['is_read' => true]);
+        // Mark as read for this user
+        $user = auth()->user();
+        $pivot = $article->users()->where('user_id', $user->id)->first();
+        if (!$pivot) {
+            $article->users()->attach($user->id, ['is_read' => true]);
+        } elseif (!$pivot->pivot->is_read) {
+            $article->users()->updateExistingPivot($user->id, ['is_read' => true]);
         }
 
-        // Logic for reading flow (Newest first)
+        // Reload relation to have fresh state in view
+        $article->load(['users' => fn($q) => $q->where('user_id', $user->id)]);
+
+        // Logic for reading flow (Newest first) - Scoped to User's Feeds
         // Previous = Newer article (above in list)
-        $previous = Article::where('published_at', '>', $article->published_at)
+        $previous = Article::whereHas('feed', fn($q) => $q->where('user_id', $user->id))
+            ->where('published_at', '>', $article->published_at)
             ->orderBy('published_at', 'asc') // Create closest newer date
             ->first();
 
         // Next = Older article (below in list)
-        $next = Article::where('published_at', '<', $article->published_at)
+        $next = Article::whereHas('feed', fn($q) => $q->where('user_id', $user->id))
+            ->where('published_at', '<', $article->published_at)
             ->orderBy('published_at', 'desc') // Closest older date
             ->first();
 
@@ -102,19 +111,47 @@ class ArticleController extends Controller
 
     public function toggleSaved(Article $article)
     {
-        $article->update(['is_saved' => !$article->is_saved]);
-        return response()->json(['success' => true, 'is_saved' => $article->is_saved]);
+        $user = auth()->user();
+        $pivot = $article->users()->where('user_id', $user->id)->first();
+        
+        $newState = $pivot ? !$pivot->pivot->is_saved : true;
+        
+        if (!$pivot) {
+             $article->users()->attach($user->id, ['is_saved' => true]);
+        } else {
+             $article->users()->updateExistingPivot($user->id, ['is_saved' => $newState]);
+        }
+        
+        return response()->json(['success' => true, 'is_saved' => $newState]);
     }
 
     public function toggleFavorite(Article $article)
     {
-        $article->update(['is_favorite' => !$article->is_favorite]);
-        return response()->json(['success' => true, 'is_favorite' => $article->is_favorite]);
+        $user = auth()->user();
+        $pivot = $article->users()->where('user_id', $user->id)->first();
+        
+        $newState = $pivot ? !$pivot->pivot->is_favorite : true;
+        
+        if (!$pivot) {
+             $article->users()->attach($user->id, ['is_favorite' => true]);
+        } else {
+             $article->users()->updateExistingPivot($user->id, ['is_favorite' => $newState]);
+        }
+        
+        return response()->json(['success' => true, 'is_favorite' => $newState]);
     }
 
     public function markRead(Article $article)
     {
-        $article->update(['is_read' => true]);
+        $user = auth()->user();
+        $pivot = $article->users()->where('user_id', $user->id)->first();
+        
+        if (!$pivot) {
+             $article->users()->attach($user->id, ['is_read' => true]);
+        } else {
+             $article->users()->updateExistingPivot($user->id, ['is_read' => true]);
+        }
+        
         return response()->json(['success' => true]);
     }
 }
