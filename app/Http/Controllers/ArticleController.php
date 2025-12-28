@@ -91,6 +91,30 @@ class ArticleController extends Controller
             $readability->parse($html);
 
             $content = $readability->getContent();
+            
+            // Validation: If content is too short or empty, it might be a JS-rendered site that the simple HTTP request missed.
+            // In that case, force the Browsershot fallback if we haven't already used it.
+            $isContentTooShort = !($content) || strlen(strip_tags($content)) < 200;
+
+            if (!$isBlocked && $isContentTooShort) {
+                 \Log::info("Content too short for {$article->url}, retrying with Browsershot.");
+                 
+                 $browsershot = \Spatie\Browsershot\Browsershot::url($article->url)
+                    ->setOption('args', ['--no-sandbox', '--disable-setuid-sandbox'])
+                    ->windowSize(1920, 1080)
+                    ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+                    ->dismissDialogs()
+                    ->ignoreHttpsErrors()
+                    ->waitUntilNetworkIdle() // Wait for JS to finish
+                    ->timeout(60); 
+
+                 $html = $browsershot->bodyHtml();
+                 
+                 // Re-parse with new HTML
+                 $readability->parse($html);
+                 $content = $readability->getContent();
+            }
+
             $title = $readability->getTitle();
 
             // Update article with full content

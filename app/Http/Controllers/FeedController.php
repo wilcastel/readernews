@@ -110,6 +110,17 @@ class FeedController extends Controller
         return back()->with('success', 'Refreshing ' . $feed->name . '...');
     }
 
+    public function refreshAll()
+    {
+        $feeds = auth()->user()->feeds;
+        
+        foreach ($feeds as $feed) {
+            \App\Jobs\FetchFeedArticles::dispatch($feed);
+        }
+        
+        return back()->with('success', 'Refreshing all ' . $feeds->count() . ' feeds...');
+    }
+
     public function store(\Illuminate\Http\Request $request, \App\Services\FeedDiscoveryService $discovery)
     {
         $request->validate(['url' => 'required|url']);

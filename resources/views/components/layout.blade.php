@@ -131,17 +131,32 @@
             <div>
                 <div class="px-3 mb-2 text-xs font-semibold text-surface-400 uppercase tracking-wider">Library</div>
                 <div class="space-y-1">
-                    <a href="{{ route('dashboard') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('dashboard') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
-                        <ion-icon name="grid-outline" class="text-lg"></ion-icon>
-                        All Articles
+                    <a href="{{ route('dashboard') }}" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('dashboard') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
+                        <div class="flex items-center gap-3">
+                            <ion-icon name="grid-outline" class="text-lg"></ion-icon>
+                            All Articles
+                        </div>
+                        @if(auth()->check() && auth()->user()->unreadArticlesCount() > 0)
+                            <span class="text-xs text-surface-400">{{ auth()->user()->unreadArticlesCount() }}</span>
+                        @endif
                     </a>
-                    <a href="{{ route('saved') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('saved') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
-                        <ion-icon name="bookmark-outline" class="text-lg"></ion-icon>
-                        Saved for Later
+                    <a href="{{ route('saved') }}" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('saved') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
+                        <div class="flex items-center gap-3">
+                            <ion-icon name="bookmark-outline" class="text-lg"></ion-icon>
+                            Saved for Later
+                        </div>
+                        @if(auth()->check() && auth()->user()->savedArticlesCount() > 0)
+                            <span class="text-xs text-surface-400">{{ auth()->user()->savedArticlesCount() }}</span>
+                        @endif
                     </a>
-                    <a href="{{ route('favorites') }}" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('favorites') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
-                        <ion-icon name="star-outline" class="text-lg"></ion-icon>
-                        Favorites
+                    <a href="{{ route('favorites') }}" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('favorites') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
+                        <div class="flex items-center gap-3">
+                            <ion-icon name="star-outline" class="text-lg"></ion-icon>
+                            Favorites
+                        </div>
+                        @if(auth()->check() && auth()->user()->favoriteArticlesCount() > 0)
+                             <span class="text-xs text-surface-400">{{ auth()->user()->favoriteArticlesCount() }}</span>
+                        @endif
                     </a>
                 </div>
             </div>
@@ -202,6 +217,10 @@
                                 </a>
                             </div>
                             
+                            @if($folder->feeds->sum('articles_count') > 0)
+                                <span class="text-xs text-surface-400 mr-2">{{ $folder->feeds->sum('articles_count') }}</span>
+                            @endif
+                            
                              <form action="{{ route('folders.destroy', $folder) }}" method="POST" class="ml-2 opacity-0 group-hover:opacity-100 transition-opacity" onsubmit="return confirm('Delete folder? Feeds will be uncategorized.')">
                                 @csrf
                                 @method('DELETE')
@@ -237,11 +256,24 @@
                     <!-- Unorganized Feeds -->
                     <div class="space-y-1">
                          @auth
-                         @if(auth()->user()->folders()->count() > 0)
-                            <div class="px-3 text-[10px] font-semibold text-surface-400 uppercase tracking-wider mt-4">Uncategorized</div>
+                         @php
+                            $uncategorizedFeeds = auth()->user()->feeds()
+                                ->whereNull('folder_id')
+                                ->withCount(['articles' => fn($a) => $a->whereDoesntHave('users', fn($u) => $u->where('user_id', auth()->id())->where('is_read', true))])
+                                ->get();
+                            $uncategorizedCount = $uncategorizedFeeds->sum('articles_count');
+                         @endphp
+
+                         @if(auth()->user()->folders()->count() > 0 && $uncategorizedFeeds->count() > 0)
+                            <div class="px-3 text-[10px] font-semibold text-surface-400 uppercase tracking-wider mt-4 flex justify-between items-center group">
+                                <span>Uncategorized</span>
+                                @if($uncategorizedCount > 0)
+                                    <span class="text-surface-400">{{ $uncategorizedCount }}</span>
+                                @endif
+                            </div>
                          @endif
 
-                         @foreach(auth()->user()->feeds()->whereNull('folder_id')->withCount(['articles' => fn($a) => $a->whereDoesntHave('users', fn($u) => $u->where('user_id', auth()->id())->where('is_read', true))])->get() as $feed)
+                         @foreach($uncategorizedFeeds as $feed)
                         <div class="relative group/feed">
                             <a href="{{ route('feed.show', $feed) }}" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ request()->is('feed/'.$feed->id) ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800' }} transition-colors pr-8">
                                 <div class="flex items-center gap-3 overflow-hidden">
@@ -360,12 +392,19 @@
                     <ion-icon name="moon-outline" class="text-xl hidden dark:block"></ion-icon>
                     <ion-icon name="sunny-outline" class="text-xl block dark:hidden"></ion-icon>
                 </button>
-                <button class="p-2 rounded-full hover:bg-surface-100 text-surface-500 transition-colors">
-                    <ion-icon name="refresh-outline" class="text-xl"></ion-icon>
-                </button>
-                <button class="p-2 rounded-full hover:bg-surface-100 text-surface-500 transition-colors">
+                
+                <!-- Global Refresh -->
+                <form action="{{ route('feeds.refresh-all') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Refresh All Feeds">
+                        <ion-icon name="refresh-outline" class="text-xl"></ion-icon>
+                    </button>
+                </form>
+
+                <!-- Settings / Profile -->
+                <a href="{{ route('profile.edit') }}" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Settings">
                     <ion-icon name="settings-outline" class="text-xl"></ion-icon>
-                </button>
+                </a>
             </div>
         </header>
 

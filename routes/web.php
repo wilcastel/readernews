@@ -20,6 +20,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/feeds', [FeedController::class, 'store'])->name('feeds.store');
     Route::put('/feeds/{feed}', [FeedController::class, 'update'])->name('feeds.update');
+    Route::post('/feeds/refresh-all', [FeedController::class, 'refreshAll'])->name('feeds.refresh-all');
     Route::post('/feeds/{feed}/refresh', [FeedController::class, 'refresh'])->name('feeds.refresh');
     Route::delete('/feeds/{feed}', [FeedController::class, 'destroy'])->name('feeds.destroy');
 

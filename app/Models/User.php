@@ -59,4 +59,31 @@ class User extends Authenticatable
     {
         return $this->hasMany(Tag::class);
     }
+
+    public function articles()
+    {
+        return $this->belongsToMany(Article::class)
+            ->withPivot(['is_read', 'is_saved', 'is_favorite'])
+            ->withTimestamps();
+    }
+
+    public function unreadArticlesCount()
+    {
+        // Articles in user's feeds that are NOT marked as read
+        return Article::whereHas('feed', function($q) {
+            $q->where('user_id', $this->id);
+        })->whereDoesntHave('users', function($q) {
+            $q->where('user_id', $this->id)->where('is_read', true);
+        })->count();
+    }
+
+    public function savedArticlesCount()
+    {
+        return $this->articles()->wherePivot('is_saved', true)->count();
+    }
+
+    public function favoriteArticlesCount()
+    {
+        return $this->articles()->wherePivot('is_favorite', true)->count();
+    }
 }
