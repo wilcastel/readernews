@@ -52,7 +52,23 @@ Para lograr el objetivo de seguir sitios sin feeds RSS:
     - Integración en el Job de actualización.
 
 ## Futuras Mejoras (V2)
+
 ### Transcripción IA para YouTube
 - Implementar un servicio que extraiga los subtítulos (transcripts) de los videos de YouTube.
 - Utilizar herramientas como `yt-dlp` o APIs de terceros.
 - Procesar el texto extraído con la IA Local para generar un "Resumen de lectura" del video, permitiendo "leer" el contenido del video sin verlo completo.
+
+### Búsqueda Avanzada y Alertas (IA)
+- **Buscador Profundo**: Indexar contenido completo de artículos para búsquedas precisas (Full-Text Search).
+- **Sistema de Alertas Inteligentes**:
+  - Definir "Watchlists" con términos de búsqueda específicos (en titulares, texto, fechas).
+  - Acciones automáticas basadas en propiedades (ej: "Si menciona 'Bitcoin' y es de 'ayer', enviar a Favoritos").
+- **Configuración de IA**:
+  - Selector de proveedor (Local/Ollama vs API/OpenRouter/OpenAI/Claude).
+  - Configuración de Prompts personalizados para tareas específicas.
+
+### Sistema de Gestión de Conocimiento (PKM)
+- **Anotaciones y Referencias**: Poder seleccionar texto de un artículo y guardar una nota/referencia.
+- **Archivo Permanente**: Un sistema para "congelar" y guardar la versión actual de un artículo (snapshot) para evitar link rot.
+- **Generación de Contenido (Redacción)**:
+  - Usar artículos seleccionados como "Contexto" para que la IA redacte nuevos contenidos (ej: "Escribe un boletín semanal resumiendo estos 5 artículos").
