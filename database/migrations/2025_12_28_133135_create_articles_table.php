@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('feed_id')->constrained()->cascadeOnDelete();
             $table->string('title');
-            $table->string('url', 768)->unique(); // Limit length for index if needed, unique is important
+            $table->string('url', 512)->unique(); // Reduced to 512 for MySQL composite index limit
             $table->string('author')->nullable();
             $table->string('image_url')->nullable();
             $table->longText('content')->nullable();
