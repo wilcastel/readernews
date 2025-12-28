@@ -1,0 +1,187 @@
+<x-layout title="{{ $article->title }}">
+    <x-slot name="headerActions">
+        <div class="flex items-center gap-4 mr-4 pr-4 border-r border-surface-200 dark:border-surface-700">
+            <a href="{{ route('home') }}" class="inline-flex items-center gap-2 text-surface-500 hover:text-surface-900 dark:hover:text-white transition-colors font-medium text-sm whitespace-nowrap">
+                <ion-icon name="arrow-back-outline"></ion-icon>
+                <span class="hidden md:inline">Back</span>
+            </a>
+            
+            <div class="flex items-center gap-1 bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5">
+                <a href="{{ $previous ? route('articles.show', $previous) : '#' }}" 
+                   class="p-1.5 rounded-md hover:bg-white dark:hover:bg-surface-700 transition-colors {{ !$previous ? 'opacity-50 pointer-events-none' : 'text-surface-700 dark:text-surface-200' }}"
+                   title="Previous Article">
+                   <ion-icon name="chevron-up-outline"></ion-icon>
+                </a>
+                <a href="{{ $next ? route('articles.show', $next) : '#' }}" 
+                   class="p-1.5 rounded-md hover:bg-white dark:hover:bg-surface-700 transition-colors {{ !$next ? 'opacity-50 pointer-events-none' : 'text-surface-700 dark:text-surface-200' }}"
+                   title="Next Article">
+                   <ion-icon name="chevron-down-outline"></ion-icon>
+                </a>
+            </div>
+        </div>
+    </x-slot>
+
+    <div class="max-w-4xl mx-auto bg-white dark:bg-surface-900 shadow-md rounded-2xl overflow-hidden border border-surface-200 dark:border-surface-800"
+         x-data="{ 
+            fetching: false,
+            hasContent: {{ $article->content ? 'true' : 'false' }},
+            fetchContent() {
+                this.fetching = true;
+                fetch('{{ route('articles.fetch', $article) }}', {
+                    method: 'POST',
+                    headers: { 
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(async response => {
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'Server Error');
+                    return data;
+                })
+                .then(data => {
+                    if(data.success) {
+                        this.hasContent = true;
+                        document.getElementById('article-content').innerHTML = data.content;
+                        // Re-run embeds
+                        if(window.twttr) window.twttr.widgets.load(document.getElementById('article-content'));
+                        if(window.instgrm) window.instgrm.Embeds.process();
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                })
+                .finally(() => this.fetching = false);
+            }
+         }">
+        
+        <!-- Header Image -->
+        @if($article->image_url)
+            <div class="h-64 md:h-80 w-full relative">
+                <img src="{{ $article->image_url }}" class="w-full h-full object-cover" alt="Article Header">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                <div class="absolute bottom-6 left-6 right-6 text-white">
+                    <div class="flex items-center gap-2 mb-2">
+                        @if($article->feed->favicon)
+                            <img src="{{ $article->feed->favicon }}" class="w-4 h-4 rounded-sm" alt="Favicon">
+                        @endif
+                        <span class="text-sm font-medium uppercase tracking-wider">{{ $article->feed->name }}</span>
+                    </div>
+                    <h1 class="text-3xl md:text-4xl font-bold font-serif leading-tight text-white shadow-black drop-shadow-md">
+                        {{ $article->title }}
+                    </h1>
+                </div>
+            </div>
+        @else
+            <div class="p-8 pb-4 border-b border-surface-100 dark:border-surface-800">
+                <div class="flex items-center gap-2 mb-3 text-primary-600">
+                     @if($article->feed->favicon)
+                        <img src="{{ $article->feed->favicon }}" class="w-4 h-4 rounded-sm" alt="Favicon">
+                    @endif
+                    <span class="text-sm font-medium uppercase tracking-wider">{{ $article->feed->name }}</span>
+                </div>
+                 <h1 class="text-3xl md:text-4xl font-bold font-serif leading-tight text-surface-900 dark:text-white">
+                    {{ $article->title }}
+                </h1>
+            </div>
+        @endif
+
+        <div class="px-6 py-4 bg-surface-50 dark:bg-surface-950 flex flex-wrap items-center justify-between gap-4 border-b border-surface-200 dark:border-surface-800"
+             x-data="{ 
+                saved: {{ $article->is_saved ? 'true' : 'false' }},
+                favorite: {{ $article->is_favorite ? 'true' : 'false' }},
+                toggleSaved() {
+                    this.saved = !this.saved;
+                    fetch('/articles/{{ $article->id }}/toggle-saved', { 
+                        method: 'POST', 
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } 
+                    });
+                },
+                toggleFavorite() {
+                    this.favorite = !this.favorite;
+                    fetch('/articles/{{ $article->id }}/toggle-favorite', { 
+                        method: 'POST', 
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } 
+                    });
+                }
+             }">
+            <div class="flex items-center gap-4 text-sm text-surface-500">
+                <span>{{ $article->author ?? 'Unknown Author' }}</span>
+                <span>•</span>
+                <span>{{ $article->published_at?->format('F j, Y, g:i a') }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                 <a href="{{ $article->url }}" target="_blank" class="px-3 py-1.5 rounded-lg text-sm font-medium text-surface-600 hover:bg-surface-200 dark:text-surface-400 dark:hover:bg-surface-800 transition-colors flex items-center gap-2">
+                    <ion-icon name="open-outline"></ion-icon> Visit Original
+                </a>
+                
+                 <button @click="toggleFavorite()" 
+                    class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    :class="favorite ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : 'text-surface-600 hover:bg-surface-200 dark:text-surface-400 dark:hover:bg-surface-800'">
+                    <ion-icon :name="favorite ? 'star' : 'star-outline'"></ion-icon> <span x-text="favorite ? 'Favorited' : 'Favorite'"></span>
+                </button>
+
+                 <button @click="toggleSaved()" 
+                    class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    :class="saved ? 'text-primary-700 bg-primary-100 dark:bg-primary-900/30' : 'text-primary-600 bg-primary-50 dark:bg-primary-900/10 hover:bg-primary-100'">
+                    <ion-icon :name="saved ? 'bookmark' : 'bookmark-outline'"></ion-icon> <span x-text="saved ? 'Saved' : 'Save'"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="p-6 md:p-10">
+            
+            <!-- Full Content Placeholder / Display -->
+            <div id="article-content" class="prose dark:prose-invert prose-lg max-w-none font-serif leading-loose text-surface-800 dark:text-surface-200 
+                prose-iframe:w-full prose-iframe:aspect-video prose-iframe:rounded-xl prose-img:rounded-xl">
+                @if($article->content)
+                    {!! $article->content !!}
+                @else
+                    <div class="text-xl font-sans text-surface-600 dark:text-surface-400 mb-8 leading-relaxed">
+                        {{ $article->summary }}
+                    </div>
+                @endif
+            </div>
+
+            <!-- Fetch Button (Always visible to allow upgrading content) -->
+            <div class="mt-12 text-center py-8 border-t border-dashed border-surface-200 dark:border-surface-800">
+                <div class="mb-4 text-sm text-surface-500 font-medium" x-show="!hasContent">Viewing summary. Read the full story?</div>
+                <div class="mb-4 text-sm text-surface-500 font-medium" x-show="hasContent">Missing something? Try extracting the full article from source.</div>
+                
+                <button @click="fetchContent()" :disabled="fetching" 
+                    class="group relative inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium shadow-sm transition-all
+                           bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200
+                           hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 hover:shadow-md
+                           disabled:opacity-50 disabled:cursor-not-allowed">
+                    
+                    <ion-icon name="flash-outline" class="text-primary-500 group-hover:animate-pulse" x-show="!fetching"></ion-icon>
+                    <ion-icon name="reload" class="animate-spin text-primary-500" x-show="fetching"></ion-icon>
+                    
+                    <span x-text="fetching ? 'Extracting Content...' : (hasContent ? 'Re-Extract Full Content' : 'Load Full Article')"></span>
+                </button>
+                 <p class="text-[10px] text-surface-400 mt-3 uppercase tracking-wider" x-show="fetching">Powered by Readability Engine</p>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- Scripts for Social Embeds -->
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <script async src="//www.instagram.com/embed.js"></script>
+    <script>
+        // Re-initialize embeds after dynamic fetch
+        document.addEventListener('alpine:init', () => {
+            Alpine.effect(() => {
+                // When content is loaded dynamically
+                const content = document.getElementById('article-content');
+                if(content && window.twttr) {
+                    window.twttr.widgets.load(content);
+                }
+                if(content && window.instgrm) {
+                    window.instgrm.Embeds.process();
+                }
+            });
+        });
+    </script>
+</x-layout>
