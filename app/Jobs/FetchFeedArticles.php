@@ -97,20 +97,38 @@ class FetchFeedArticles implements ShouldQueue
                 if ($response->successful()) {
                     $content = $response->body();
                     
-                    // Sanitize XML: Fix potential nesting or bad chars
-                    // Remove w3.org validation badges usually found at bottom that break parsers sometimes
-                    
-                    // Fix "]]>" not allowed in content (often invalid CDATA nesting)
-                    // If ]]> appears outside CDATA or is nested, it breaks. 
-                    // Simple hack: We can try to just run it through SimplePie's raw data handler, 
-                    // but often we need to strip low ascii chars too.
+                    // Sanitize XML level 1: Remove low ascii
                     $content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content);
                     
+                    // Try SimplePie on sanitized content
                     $pie = new SimplePie();
                     $pie->set_raw_data($content);
                     $pie->enable_cache(false);
                     $pie->init();
                     $items = $pie->get_items(0, 20);
+
+                    // 3. Ultra-Fallback: DOMDocument Recovery (for malformed XML like Banca y Negocios)
+                    if (!$items) {
+                         \Log::info("Sanitization failed for {$this->feed->name}. Attempting DOMDocument recovery.");
+                         $originalLibXmlError = libxml_use_internal_errors(true);
+                         
+                         $dom = new \DOMDocument();
+                         $dom->recover = true; // Key option
+                         $dom->loadXML($content, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_RECOVER);
+                         
+                         if ($dom->documentElement) {
+                             $recoveredXml = $dom->saveXML();
+                             
+                             $pie = new SimplePie();
+                             $pie->set_raw_data($recoveredXml);
+                             $pie->enable_cache(false);
+                             $pie->init();
+                             $items = $pie->get_items(0, 20);
+                         }
+                         
+                         libxml_clear_errors();
+                         libxml_use_internal_errors($originalLibXmlError);
+                    }
                 }
             } catch (\Exception $e) {
                 \Log::error("Manual RSS fallback failed for {$this->feed->url}: " . $e->getMessage());
