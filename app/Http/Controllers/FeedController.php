@@ -139,13 +139,15 @@ class FeedController extends Controller
         $validated = $request->validate([
             'is_rss' => 'required|boolean',
             'url' => 'required|url',
-            'name' => 'required|string|max:255'
+            'name' => 'required|string|max:255',
+            'selector' => 'nullable|string|max:255'
         ]);
 
         $feed->update([
             'is_rss' => $validated['is_rss'],
             'url' => $validated['url'],
             'name' => $validated['name'],
+            'selector' => $validated['selector'] ?? null,
             'last_scraped_at' => null // Reset scrape time to force update
         ]);
 

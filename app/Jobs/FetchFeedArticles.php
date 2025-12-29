@@ -42,7 +42,7 @@ class FetchFeedArticles implements ShouldQueue
              return;
         }
 
-        $articles = $ollama->extractArticlesFromHtml($response->body());
+        $articles = $ollama->extractArticlesFromHtml($response->body(), $this->feed->selector);
 
         foreach ($articles as $item) {
             // Validate URL

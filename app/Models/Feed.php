@@ -8,6 +8,7 @@ class Feed extends Model
 {
     protected $fillable = [
         'url',
+        'selector',
         'name', 
         'website_url',
         'favicon',
