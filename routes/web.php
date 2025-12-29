@@ -23,6 +23,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/feeds/refresh-all', [FeedController::class, 'refreshAll'])->name('feeds.refresh-all');
     Route::post('/feeds/{feed}/refresh', [FeedController::class, 'refresh'])->name('feeds.refresh');
     Route::delete('/feeds/{feed}', [FeedController::class, 'destroy'])->name('feeds.destroy');
+    Route::post('/feeds/{feed}/mark-all-read', [FeedController::class, 'markAllRead'])->name('feeds.mark-all-read');
+    
+    // Feed Management
+    Route::get('/feeds/manage', [FeedController::class, 'manage'])->name('feeds.manage');
+    Route::put('/feeds/{feed}/toggle-mode', [FeedController::class, 'toggleMode'])->name('feeds.toggle-mode');
 
     Route::get('/tags/{tag:slug}', [TagController::class, 'show'])->name('tags.show');
     Route::post('/tags', [TagController::class, 'store'])->name('tags.store');

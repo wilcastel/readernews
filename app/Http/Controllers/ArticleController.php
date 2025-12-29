@@ -8,16 +8,24 @@ use fivefilters\Readability\Readability;
 use fivefilters\Readability\Configuration;
 use fivefilters\Readability\ParseException;
 
+use Illuminate\Database\UniqueConstraintViolationException;
+
 class ArticleController extends Controller
 {
     public function show(Article $article)
     {
         // Mark as read for this user
         $user = auth()->user();
-        $pivot = $article->users()->where('user_id', $user->id)->first();
-        if (!$pivot) {
-            $article->users()->attach($user->id, ['is_read' => true]);
-        } elseif (!$pivot->pivot->is_read) {
+        
+        try {
+            $pivot = $article->users()->where('user_id', $user->id)->first();
+            if (!$pivot) {
+                $article->users()->attach($user->id, ['is_read' => true]);
+            } elseif (!$pivot->pivot->is_read) {
+                $article->users()->updateExistingPivot($user->id, ['is_read' => true]);
+            }
+        } catch (UniqueConstraintViolationException $e) {
+            // Race condition: record created by another request, ensure it is updated
             $article->users()->updateExistingPivot($user->id, ['is_read' => true]);
         }
 
@@ -136,14 +144,21 @@ class ArticleController extends Controller
     public function toggleSaved(Article $article)
     {
         $user = auth()->user();
-        $pivot = $article->users()->where('user_id', $user->id)->first();
         
-        $newState = $pivot ? !$pivot->pivot->is_saved : true;
-        
-        if (!$pivot) {
-             $article->users()->attach($user->id, ['is_saved' => true]);
-        } else {
-             $article->users()->updateExistingPivot($user->id, ['is_saved' => $newState]);
+        try {
+            $pivot = $article->users()->where('user_id', $user->id)->first();
+            $newState = $pivot ? !$pivot->pivot->is_saved : true;
+            
+            if (!$pivot) {
+                 $article->users()->attach($user->id, ['is_saved' => true]);
+            } else {
+                 $article->users()->updateExistingPivot($user->id, ['is_saved' => $newState]);
+            }
+        } catch (UniqueConstraintViolationException $e) {
+             // If duplicate, it means it was just created (is_saved=true likely), so ensure it's saved?
+             // Or flip it? Safer to assume user wanted it saved if they clicked save.
+             $article->users()->updateExistingPivot($user->id, ['is_saved' => true]);
+             $newState = true; // Feedback
         }
         
         return response()->json(['success' => true, 'is_saved' => $newState]);
@@ -152,14 +167,19 @@ class ArticleController extends Controller
     public function toggleFavorite(Article $article)
     {
         $user = auth()->user();
-        $pivot = $article->users()->where('user_id', $user->id)->first();
         
-        $newState = $pivot ? !$pivot->pivot->is_favorite : true;
-        
-        if (!$pivot) {
-             $article->users()->attach($user->id, ['is_favorite' => true]);
-        } else {
-             $article->users()->updateExistingPivot($user->id, ['is_favorite' => $newState]);
+        try {
+            $pivot = $article->users()->where('user_id', $user->id)->first();
+            $newState = $pivot ? !$pivot->pivot->is_favorite : true;
+            
+            if (!$pivot) {
+                 $article->users()->attach($user->id, ['is_favorite' => true]);
+            } else {
+                 $article->users()->updateExistingPivot($user->id, ['is_favorite' => $newState]);
+            }
+        } catch (UniqueConstraintViolationException $e) {
+             $article->users()->updateExistingPivot($user->id, ['is_favorite' => true]);
+             $newState = true;
         }
         
         return response()->json(['success' => true, 'is_favorite' => $newState]);
@@ -168,12 +188,17 @@ class ArticleController extends Controller
     public function markRead(Article $article)
     {
         $user = auth()->user();
-        $pivot = $article->users()->where('user_id', $user->id)->first();
         
-        if (!$pivot) {
-             $article->users()->attach($user->id, ['is_read' => true]);
-        } else {
-             $article->users()->updateExistingPivot($user->id, ['is_read' => true]);
+        try {
+            $pivot = $article->users()->where('user_id', $user->id)->first();
+            
+            if (!$pivot) {
+                 $article->users()->attach($user->id, ['is_read' => true]);
+            } else {
+                 $article->users()->updateExistingPivot($user->id, ['is_read' => true]);
+            }
+        } catch (UniqueConstraintViolationException $e) {
+            $article->users()->updateExistingPivot($user->id, ['is_read' => true]);
         }
         
         return response()->json(['success' => true]);

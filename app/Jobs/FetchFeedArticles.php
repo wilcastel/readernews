@@ -74,12 +74,59 @@ class FetchFeedArticles implements ShouldQueue
 
     protected function fetchRss(): void
     {
+        // 1. Try Standard SimplePie Fetch first
         $pie = new SimplePie();
         $pie->set_feed_url($this->feed->url);
         $pie->enable_cache(false); 
+        $pie->set_useragent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
         $pie->init();
+        $pie->handle_content_type();
 
-        $items = $pie->get_items(0, 20); 
+        $items = $pie->get_items(0, 20);
+
+        // 2. Fallback: Manual Download & Sanitize (if standard fetch fails)
+        if (!$items) {
+            \Log::warning("Standard RSS fetch failed/empty for {$this->feed->name}. Trying manual download & sanitize.");
+            
+            try {
+                $response = \Illuminate\Support\Facades\Http::withoutVerifying()
+                    ->withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'])
+                    ->timeout(20)
+                    ->get($this->feed->url);
+
+                if ($response->successful()) {
+                    $content = $response->body();
+                    
+                    // Sanitize XML: Fix potential nesting or bad chars
+                    // Remove w3.org validation badges usually found at bottom that break parsers sometimes
+                    
+                    // Fix "]]>" not allowed in content (often invalid CDATA nesting)
+                    // If ]]> appears outside CDATA or is nested, it breaks. 
+                    // Simple hack: We can try to just run it through SimplePie's raw data handler, 
+                    // but often we need to strip low ascii chars too.
+                    $content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content);
+                    
+                    $pie = new SimplePie();
+                    $pie->set_raw_data($content);
+                    $pie->enable_cache(false);
+                    $pie->init();
+                    $items = $pie->get_items(0, 20);
+                }
+            } catch (\Exception $e) {
+                \Log::error("Manual RSS fallback failed for {$this->feed->url}: " . $e->getMessage());
+            }
+        }
+
+        // Auto-fix name if it's unknown
+        if ($this->feed->name === 'Unknown Feed' || $this->feed->name === $this->feed->url) {
+            $title = $pie->get_title();
+            if ($title) {
+                $this->feed->update([
+                    'name' => html_entity_decode($title),
+                    'description' => html_entity_decode($pie->get_description() ?? '')
+                ]);
+            }
+        }
 
         foreach ($items as $item) {
             $url = $item->get_permalink();
@@ -87,12 +134,29 @@ class FetchFeedArticles implements ShouldQueue
             if (Article::where('url', $url)->where('feed_id', $this->feed->id)->exists()) continue;
 
             $image = null;
-            if ($enclusure = $item->get_enclosure()) {
-                $image = $enclusure->get_link();
+            
+            // 1. Try Media RSS (YouTube and others use this for thumbnails)
+            $media_group = $item->get_item_tags('http://search.yahoo.com/mrss/', 'group');
+            if ($media_group && isset($media_group[0]['child']['http://search.yahoo.com/mrss/']['thumbnail'][0]['attribs']['']['url'])) {
+                $image = $media_group[0]['child']['http://search.yahoo.com/mrss/']['thumbnail'][0]['attribs']['']['url'];
             }
+
+            // 2. Try Standard Enclosure (if no image yet)
+            if (!$image && ($enclosure = $item->get_enclosure())) {
+                $type = $enclosure->get_type();
+                if (!$type || str_starts_with($type, 'image/')) {
+                     $image = $enclosure->get_link();
+                }
+            }
+
+            // 3. Try finding <img> in content
             if (!$image && preg_match('/<img.+src=[\'"](?P<src>.+?)[\'"].*>/i', $item->get_content(), $imageMatches)) {
                  $image = $imageMatches['src'];
             }
+
+            // Robust date parsing
+            $date = $item->get_date();
+            $publishedAt = $date ? Carbon::parse($date) : now();
 
             Article::create([
                 'feed_id' => $this->feed->id,
@@ -102,7 +166,7 @@ class FetchFeedArticles implements ShouldQueue
                 'image_url' => $image,
                 'summary' => strip_tags(html_entity_decode($item->get_description())), 
                 'content' => $item->get_content(),
-                'published_at' => Carbon::parse($item->get_date()),
+                'published_at' => $publishedAt,
             ]);
         }
         

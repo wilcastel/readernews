@@ -239,7 +239,16 @@
                                             <span class="truncate">{{ $feed->name }}</span>
                                         </div>
                                         @if($feed->articles_count > 0)
-                                            <span class="text-[10px] font-semibold text-surface-400 group-hover/feed:text-primary-600">{{ $feed->articles_count }}</span>
+                                            <!-- Mark All Read Form -->
+                                            <form action="{{ route('feeds.mark-all-read', $feed) }}" method="POST" class="inline" onsubmit="event.stopPropagation();">
+                                                @csrf
+                                                <button type="submit" 
+                                                    class="text-[10px] font-semibold text-surface-400 group-hover/feed:text-primary-600 hover:!text-primary-800 dark:hover:!text-primary-300 transition-colors cursor-pointer z-10 relative"
+                                                    title="Mark all as read"
+                                                    @click.stop>
+                                                    {{ $feed->articles_count }}
+                                                </button>
+                                            </form>
                                         @endif
                                     </a>
                                     <button @click.prevent="editFeed({{ $feed->id }}, '{{ addslashes($feed->name) }}', '{{ $folder->id }}')" 
@@ -286,9 +295,16 @@
                                     <span class="truncate">{{ $feed->name }}</span>
                                 </div>
                                 @if($feed->articles_count > 0)
-                                    <span class="bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300 py-0.5 px-2 rounded-full text-xs font-semibold group-hover:bg-primary-100 group-hover:text-primary-600 transition-colors">
-                                        {{ $feed->articles_count }}
-                                    </span>
+                                    <!-- Mark All Read Form -->
+                                    <form action="{{ route('feeds.mark-all-read', $feed) }}" method="POST" class="inline" onsubmit="event.stopPropagation();">
+                                        @csrf
+                                        <button type="submit" 
+                                            class="bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300 py-0.5 px-2 rounded-full text-xs font-semibold group-hover:bg-primary-100 group-hover:text-primary-600 hover:!bg-primary-200 dark:hover:!bg-primary-900 transition-colors cursor-pointer z-10 relative"
+                                            title="Mark all as read"
+                                            @click.stop>
+                                            {{ $feed->articles_count }}
+                                        </button>
+                                    </form>
                                 @endif
                             </a>
                             <button @click.prevent="editFeed({{ $feed->id }}, '{{ addslashes($feed->name) }}', '')" 
@@ -402,6 +418,9 @@
                 </form>
 
                 <!-- Settings / Profile -->
+                <a href="{{ route('feeds.manage') }}" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Manage Feeds & Health">
+                    <ion-icon name="pulse-outline" class="text-xl"></ion-icon>
+                </a>
                 <a href="{{ route('profile.edit') }}" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Settings">
                     <ion-icon name="settings-outline" class="text-xl"></ion-icon>
                 </a>

@@ -13,13 +13,14 @@ class FeedController extends Controller
 {
     public function index()
     {
-        $pageTitle = "All Articles";
-        // Feeds for sidebar are handled in View Composer or direct call? 
-        // Let's pass them here if we want, but sidebar logic needs update.
-        // For now, let's just make sure we get ARTICLES from user's feeds.
+        $pageTitle = "Unread Articles";
         
         $articles = Article::whereHas('feed', function($q) {
                 $q->where('user_id', auth()->id());
+            })
+            // Exclude read articles
+            ->whereDoesntHave('users', function($q) {
+                $q->where('user_id', auth()->id())->where('is_read', true);
             })
             ->with(['feed', 'users' => function($q) {
                 $q->where('user_id', auth()->id());
@@ -27,7 +28,6 @@ class FeedController extends Controller
             ->latest('published_at')
             ->simplePaginate(30);
 
-        // We can pass $feeds for the mobile menu if needed, though layout handles it generally
         $feeds = auth()->user()->feeds; 
 
         return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
@@ -108,6 +108,48 @@ class FeedController extends Controller
         \App\Jobs\FetchFeedArticles::dispatch($feed);
         
         return back()->with('success', 'Refreshing ' . $feed->name . '...');
+    }
+
+    public function markAllRead(Feed $feed)
+    {
+        abort_if($feed->user_id !== auth()->id(), 403);
+
+        $articles = $feed->articles()->pluck('id');
+        
+        // Efficiently sync/update pivot table for these articles
+        auth()->user()->articles()->syncWithPivotValues($articles, ['is_read' => true], false);
+        
+        foreach ($articles as $articleId) {
+             auth()->user()->articles()->updateExistingPivot($articleId, ['is_read' => true]);
+        }
+
+        return back()->with('success', 'All articles from ' . $feed->name . ' marked as read.');
+    }
+
+    public function manage()
+    {
+        $feeds = auth()->user()->feeds()->latest()->get();
+        return view('feeds.manage', compact('feeds'));
+    }
+
+    public function toggleMode(Feed $feed, Request $request)
+    {
+        abort_if($feed->user_id !== auth()->id(), 403);
+
+        $validated = $request->validate([
+            'is_rss' => 'required|boolean',
+            'url' => 'required|url',
+            'name' => 'required|string|max:255'
+        ]);
+
+        $feed->update([
+            'is_rss' => $validated['is_rss'],
+            'url' => $validated['url'],
+            'name' => $validated['name'],
+            'last_scraped_at' => null // Reset scrape time to force update
+        ]);
+
+        return back()->with('success', 'Feed settings updated.');
     }
 
     public function refreshAll()

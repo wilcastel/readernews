@@ -75,11 +75,23 @@ EOT;
 
     protected function cleanHtmlForContext(string $html): string
     {
-        // Remove style, script, svg to save context window
-        $html = preg_replace('/<(script|style|svg)[^>]*>.*?<\/\1>/si', '', $html);
-        $html = strip_tags($html, '<a><div><h1><h2><h3><h4><h5><p><span><li><ul><img><article><time>');
-        // Limit length roughly (approx 40k chars ~ 10k tokens)
-        // We focus on the "body" part usually
-        return Str::limit($html, 50000); 
+        // 1. Remove styles, scripts, SVGs, iframes, noscripts
+        $html = preg_replace('/<(script|style|svg|iframe|noscript|nav|footer|header|aside)[^>]*>.*?<\/\1>/si', '', $html);
+        
+        // 2. Remove comments
+        $html = preg_replace('/<!--.*?-->/s', '', $html);
+
+        // 3. Keep only essential tags for structure
+        $html = strip_tags($html, '<a><h1><h2><h3><h4><h5><p><li><ul><article><time><img><span><div>');
+
+        // 4. Aggressively remove class, id, style attributes to save tokens
+        // This regex removes all attributes except href and src
+        $html = preg_replace('/<([a-z][a-z0-9]*)[^>]*?(\s(href|src)=["\'][^"\']*["\'])?[^>]*?>/i', '<$1$2>', $html);
+        
+        // 5. Compress whitespace
+        $html = preg_replace('/\s+/', ' ', $html);
+        
+        // 6. Limit length strictly to fit context (approx 30k chars is safer for small models)
+        return Str::limit($html, 30000); 
     }
 }

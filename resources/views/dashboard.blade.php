@@ -118,12 +118,20 @@
         </article>
         @empty
         <div class="col-span-full py-12 flex flex-col items-center justify-center text-center">
-            <div class="w-16 h-16 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-4 text-surface-400">
-                <ion-icon name="newspaper-outline" class="text-3xl"></ion-icon>
-            </div>
-            <h3 class="text-lg font-medium text-surface-900 dark:text-white">Your feed is empty</h3>
-            <p class="text-surface-500 max-w-sm mx-auto mt-2">Add your first source to start reading the latest news.</p>
-            <button @click="openAddModal = true" class="mt-6 text-primary-600 hover:text-primary-700 font-medium">Add a Source Now &rarr;</button>
+            @if(isset($feeds) && $feeds->count() > 0)
+                <div class="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mb-4">
+                    <ion-icon name="checkmark-done-outline" class="text-3xl"></ion-icon>
+                </div>
+                <h3 class="text-lg font-medium text-surface-900 dark:text-white">All caught up!</h3>
+                <p class="text-surface-500 max-w-sm mx-auto mt-2">No unread articles in your feed.</p>
+            @else
+                <div class="w-16 h-16 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-4 text-surface-400">
+                    <ion-icon name="newspaper-outline" class="text-3xl"></ion-icon>
+                </div>
+                <h3 class="text-lg font-medium text-surface-900 dark:text-white">Your feed is empty</h3>
+                <p class="text-surface-500 max-w-sm mx-auto mt-2">Add your first source to start reading the latest news.</p>
+                <button @click="openAddModal = true" class="mt-6 text-primary-600 hover:text-primary-700 font-medium">Add a Source Now &rarr;</button>
+            @endif
         </div>
         @endforelse
 

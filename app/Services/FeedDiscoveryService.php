@@ -4,6 +4,7 @@ namespace App\Services;
 
 use SimplePie\SimplePie;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class FeedDiscoveryService
 {
@@ -12,7 +13,7 @@ class FeedDiscoveryService
         // Special Handling for YouTube
         if (str_contains($url, 'youtube.com/') || str_contains($url, 'youtu.be/')) {
             $youtubeFeed = $this->discoverYoutubeFeed($url);
-            if ($youtubeFeed) {
+            if ($youtubeFeed && $youtubeFeed !== $url) {
                 // Now run standard discovery on the XML feed URL we found
                 return $this->discover($youtubeFeed);
             }
@@ -48,7 +49,7 @@ class FeedDiscoveryService
             ])->get($url);
             $html = $response->body();
             
-            // Simple regex to find RSS/Atom links
+            // 1. Check for linked RSS/Atom in HTML
             // <link rel="alternate" type="application/rss+xml" href="..." />
             $pattern = '/<link[^>]+rel=["\']alternate["\'][^>]+type=["\']application\/(rss\+xml|atom\+xml)["\'][^>]+href=["\']([^"\']+)["\'][^>]*>/i';
             
@@ -59,18 +60,66 @@ class FeedDiscoveryService
                     $feedUrl = rtrim($url, '/') . '/' . ltrim($feedUrl, '/');
                 }
                 
-                // Recursively check the found feed URL
                 return $this->discover($feedUrl);
             }
+
+            // 2. Try Common RSS Paths (Heuristic) before falling back to scrape
+            $commonPaths = ['/rss', '/feed', '/rss.xml', '/atom.xml', '/feeds/posts/default', '/rss/rss.xml'];
+            $baseUrl = rtrim($url, '/');
+
+            foreach ($commonPaths as $path) {
+                $guessUrl = $baseUrl . $path;
+                try {
+                    $testFeed = new SimplePie();
+                    $testFeed->set_feed_url($guessUrl);
+                    $testFeed->enable_cache(false);
+                    // Use a browser-like UA to avoid blocking
+                    $testFeed->set_useragent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+                    $testFeed->init();
+
+                    if (!$testFeed->error()) {
+                         return [
+                            'type' => 'rss',
+                            'title' => html_entity_decode($testFeed->get_title()),
+                            'description' => $testFeed->get_description(),
+                            'site_url' => $testFeed->get_permalink(),
+                            'feed_url' => $guessUrl,
+                            'favicon' => $this->getFavicon($testFeed->get_permalink() ?? $url),
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
             
-            // No RSS found -> Candidates for AI Scraping
+            // 3. No RSS found -> Candidates for AI Scraping
+            
+            // Heuristic Check: If the URL looks like an RSS feed but failed SimplePie initially (maybe due to strict checks),
+            // we should try one last time or flag it differently.
+            // But usually, if SimplePie failed, it's malformed.
+            
+            // However, verify if we missed a common path that WAS valid but we didn't check?
+            // (We checked common paths above).
+            
+            // If the user entered a direct feed URL (e.g. ending in .xml or /feed/), we should probably treat it as RSS attempt first.
+            if (Str::endsWith($url, ['/feed', '/feed/', '/rss', '/rss/', '.xml', '.rss'])) {
+                 return [
+                    'type' => 'rss',
+                     'title' => html_entity_decode($title ?? 'Unknown Feed'),
+                     'description' => '',
+                     'site_url' => $url,
+                     'feed_url' => $url,
+                     'favicon' => $this->getFavicon($url),
+                 ];
+            }
+
             // We'll scrape the title/meta from the page
             preg_match('/<title>(.*?)<\/title>/', $html, $titleMatches);
             $title = $titleMatches[1] ?? 'Unknown Site';
             
             return [
                 'type' => 'scrape',
-                'title' => $title,
+                'title' => html_entity_decode($title),
                 'site_url' => $url,
                 'feed_url' => $url, // For scraper, the feed URL is the site URL
                 'favicon' => $this->getFavicon($url),
