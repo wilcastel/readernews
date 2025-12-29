@@ -5,6 +5,7 @@ use App\Http\Controllers\FeedController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\TagController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -29,6 +30,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/feeds/manage', [FeedController::class, 'manage'])->name('feeds.manage');
     Route::put('/feeds/{feed}/toggle-mode', [FeedController::class, 'toggleMode'])->name('feeds.toggle-mode');
 
+    // Settings
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::post('/settings/fetch-models', [SettingsController::class, 'fetchModels'])->name('settings.fetch-models');
+    
     Route::get('/tags/{tag:slug}', [TagController::class, 'show'])->name('tags.show');
     Route::post('/tags', [TagController::class, 'store'])->name('tags.store');
     Route::delete('/tags/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');

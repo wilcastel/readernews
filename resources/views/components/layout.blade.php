@@ -418,10 +418,13 @@
                 </form>
 
                 <!-- Settings / Profile -->
+                <a href="{{ route('settings.index') }}" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="AI Configuration">
+                    <ion-icon name="hardware-chip-outline" class="text-xl"></ion-icon>
+                </a>
                 <a href="{{ route('feeds.manage') }}" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Manage Feeds & Health">
                     <ion-icon name="pulse-outline" class="text-xl"></ion-icon>
                 </a>
-                <a href="{{ route('profile.edit') }}" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Settings">
+                <a href="{{ route('profile.edit') }}" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Profile Settings">
                     <ion-icon name="settings-outline" class="text-xl"></ion-icon>
                 </a>
             </div>

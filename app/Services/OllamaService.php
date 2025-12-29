@@ -4,15 +4,18 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use App\Models\Setting;
 
 class OllamaService
 {
     protected string $baseUrl;
     protected string $model;
+    protected string $provider; // 'ollama' or 'openrouter'
+    protected string $apiKey;
 
     public function __get($name)
     {
-        if (in_array($name, ['baseUrl', 'model'])) {
+        if (in_array($name, ['baseUrl', 'model', 'provider'])) {
             return $this->$name;
         }
         return null;
@@ -20,9 +23,28 @@ class OllamaService
 
     public function __construct()
     {
-        // Defaults to localhost:11434 with llama3
-        $this->baseUrl = config('services.ollama.base_url', 'http://localhost:11434');
-        $this->model = config('services.ollama.model', 'llama3');
+        try {
+            $settings = Setting::where('group', 'ai')->pluck('value', 'key');
+        } catch (\Exception $e) {
+            $settings = collect([]); // Fallback during migration/seeding
+        }
+
+        $this->provider = $settings['ai_provider'] ?? config('services.ai.provider', 'ollama');
+        
+        if ($this->provider === 'openrouter') {
+            $this->baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+            $this->model = $settings['openrouter_model'] ?? 'google/gemini-2.0-flash-exp:free';
+            $this->apiKey = $settings['openrouter_key'] ?? '';
+        } elseif ($this->provider === 'openai') {
+            // Generic OpenAI (LM Studio, LocalAI, etc)
+            $this->baseUrl = $settings['openai_url'] ?? 'http://localhost:1234/v1/chat/completions';
+            $this->model = $settings['openai_model'] ?? 'local-model';
+            $this->apiKey = $settings['openai_key'] ?? 'lm-studio';
+        } else {
+            // Ollama Default
+            $this->baseUrl = $settings['ollama_url'] ?? config('services.ollama.base_url', 'http://localhost:11434');
+            $this->model = $settings['ollama_model'] ?? config('services.ollama.model', 'qwen3:4b');
+        }
     }
 
     public function extractArticlesFromHtml(string $html, ?string $selector = null): array
@@ -31,8 +53,6 @@ class OllamaService
         $cleanHtml = $this->cleanHtmlForContext($html, $selector);
 
         // 2. Construct Prompt
-        // 2. Construct Prompt for robust text extraction
-        // JSON is failing, so we use a simple delimited format.
         $prompt = <<<EOT
 Extract news articles from the list below.
 Output EXACTLY one article per line using this format:
@@ -49,102 +69,143 @@ $cleanHtml
 EOT;
 
         try {
-            \Log::info("Sending request to Ollama via Node Bridge: {$this->model}");
-            
-            $payload = json_encode([
-                'model' => $this->model,
-                'prompt' => $prompt,
-                'stream' => false,
-                'format' => '', // Disable JSON mode
-                'options' => ['temperature' => 0.1]
-            ], JSON_UNESCAPED_SLASHES);
-            
-            // ... process execution ...
-            $process = new \Symfony\Component\Process\Process([
-                'node', 
-                base_path('ollama-bridge.cjs')
-            ]);
-            $process->setInput($payload);
-            $process->setTimeout(600);
-            $process->run();
-            
-            if (!$process->isSuccessful()) {
-                 \Log::error('Ollama Bridge failed: ' . $process->getErrorOutput());
-                 return [];
-            }
-            
-            $output = $process->getOutput();
-            $jsonResponse = json_decode($output, true);
-            
-            if (!$jsonResponse || !isset($jsonResponse['response'])) {
-                \Log::error('Invalid response from Ollama Bridge');
-                return [];
+            $responseText = '';
+
+            if ($this->provider === 'openrouter' || $this->provider === 'openai') {
+                $responseText = $this->askOpenAICompatible($prompt);
+            } else {
+                $responseText = $this->askOllamaBridge($prompt);
             }
 
-            $responseText = $jsonResponse['response'];
+            if (empty($responseText)) return [];
+
+            return $this->parseResponse($responseText);
+
+        } catch (\Exception $e) {
+            \Log::error('AI Service Error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    protected function askOllamaBridge(string $prompt): string
+    {
+        \Log::info("Sending request to Ollama via Bridge: {$this->model}");
             
-            $articles = [];
+        $payload = json_encode([
+            'model' => $this->model,
+            'prompt' => $prompt,
+            'stream' => false,
+            'format' => '', // Disable JSON mode for text instructions
+            'options' => ['temperature' => 0.1]
+        ], JSON_UNESCAPED_SLASHES);
+        
+        $process = new \Symfony\Component\Process\Process([
+            'node', 
+            base_path('ollama-bridge.cjs')
+        ]);
+        $process->setInput($payload);
+        $process->setTimeout(600);
+        $process->run();
+        
+        if (!$process->isSuccessful()) {
+                \Log::error('Ollama Bridge failed: ' . $process->getErrorOutput());
+                return '';
+        }
+        
+        $output = $process->getOutput();
+        $jsonResponse = json_decode($output, true);
+        
+        return $jsonResponse['response'] ?? '';
+    }
+
+    protected function askOpenAICompatible(string $prompt): string
+    {
+        \Log::info("Sending request to OpenAI Compatible API ({$this->provider}): {$this->model}");
+
+        $response = Http::withToken($this->apiKey)
+            ->withHeaders([
+                'HTTP-Referer' => config('app.url'), // Required by OpenRouter
+                'X-Title' => config('app.name'),
+            ])
+            ->timeout(120) // Increased timeout for local models
+            ->post($this->baseUrl, [
+                'model' => $this->model,
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+                'temperature' => 0.1,
+            ]);
+
+        if ($response->failed()) {
+            \Log::error('AI API Failed: ' . $response->body());
+            return '';
+        }
+
+        $json = $response->json();
+        
+        // Log usage if available
+        if (isset($json['usage'])) {
+             \Log::info("AI Usage: " . json_encode($json['usage']));
+        }
+
+        return $json['choices'][0]['message']['content'] ?? '';
+    }
+
+    protected function parseResponse(string $responseText): array
+    {
+        $articles = [];
             
-            // STRATEGY 1: Parse as pipe-delimited text lines
-            $lines = explode("\n", $responseText);
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if (empty($line)) continue;
+        // STRATEGY 1: Parse as pipe-delimited text lines
+        $lines = explode("\n", $responseText);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+            
+            if (str_contains($line, '|||')) {
+                $parts = explode('|||', $line);
+                if (count($parts) >= 2) {
+                    $title = trim($parts[0]);
+                    $url = trim($parts[1]);
+                    $image = isset($parts[2]) ? trim($parts[2]) : null;
+                    if ($image === 'null') $image = null;
+                    
+                    if (strlen($title) > 5 && !empty($url)) {
+                        $articles[] = [
+                            'title' => $title,
+                            'url' => $url,
+                            'image' => $image,
+                            'summary' => ''
+                        ];
+                    }
+                }
+            }
+        }
+        
+        // STRATEGY 2: Fallback to JSON extraction
+        if (empty($articles)) {
+            $start = strpos($responseText, '[');
+            $end = strrpos($responseText, ']');
+            
+            if ($start !== false && $end !== false && $end > $start) {
+                $jsonCandidate = substr($responseText, $start, $end - $start + 1);
+                $data = json_decode($jsonCandidate, true);
                 
-                if (str_contains($line, '|||')) {
-                    $parts = explode('|||', $line);
-                    if (count($parts) >= 2) {
-                        $title = trim($parts[0]);
-                        $url = trim($parts[1]);
-                        $image = isset($parts[2]) ? trim($parts[2]) : null;
-                        if ($image === 'null') $image = null;
-                        
-                        if (strlen($title) > 5 && !empty($url)) {
-                            $articles[] = [
-                                'title' => $title,
-                                'url' => $url,
-                                'image' => $image,
-                                'summary' => ''
+                if (is_array($data)) {
+                    foreach ($data as $item) {
+                        if (isset($item['title']) && isset($item['url'])) {
+                                $articles[] = [
+                                'title' => $item['title'],
+                                'url' => $item['url'],
+                                'image' => $item['image'] ?? null,
+                                'summary' => $item['summary'] ?? ''
                             ];
                         }
                     }
                 }
             }
-            
-            // STRATEGY 2: Fallback to JSON extraction if text parsing failed
-            if (empty($articles)) {
-                $start = strpos($responseText, '[');
-                $end = strrpos($responseText, ']');
-                
-                if ($start !== false && $end !== false && $end > $start) {
-                    $jsonCandidate = substr($responseText, $start, $end - $start + 1);
-                    $data = json_decode($jsonCandidate, true);
-                    
-                    // Normalize extraction
-                    // Sometimes it returns { "articles": [ ... ] } so we might have missed the outer {
-                    // But if we looked for [, we found the array.
-                    
-                    if (is_array($data)) {
-                        foreach ($data as $item) {
-                            if (isset($item['title']) && isset($item['url'])) {
-                                 $articles[] = [
-                                    'title' => $item['title'],
-                                    'url' => $item['url'],
-                                    'image' => $item['image'] ?? null,
-                                    'summary' => $item['summary'] ?? ''
-                                ];
-                            }
-                        }
-                    }
-                }
-            }
-            
-            return $articles;
-            
-        } catch (\Exception $e) {
-            \Log::error('Ollama processing error: ' . $e->getMessage());
-            return [];
         }
+
+        return $articles;
     }
 
     protected function cleanHtmlForContext(string $html, ?string $selector = null): string
