@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Setting;
 use App\Services\OllamaService; // eventually adapt this service
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class SettingsController extends Controller
 {

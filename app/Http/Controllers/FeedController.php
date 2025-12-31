@@ -8,6 +8,7 @@ use App\Models\Feed;
 use App\Models\Article;
 use App\Models\Folder;
 use App\Services\FeedDiscoveryService;
+use Illuminate\Support\Facades\Http;
 
 class FeedController extends Controller
 {
@@ -214,6 +215,87 @@ class FeedController extends Controller
     public function destroy(\App\Models\Feed $feed)
     {
         $feed->delete();
-        return redirect()->route('dashboard')->with('success', 'Feed removed.');
+        return redirect()->route('dashboard');
+    }
+
+    public function diagnose(Request $request, Feed $feed)
+    {
+        // This function mimics the extraction process but captures logs for the UI
+        $logs = [];
+        $logs[] = "1. Iniciando diagnóstico para: " . $feed->url;
+        $logs[] = "   Selector CSS: " . $feed->selector;
+
+        $startTime = microtime(true);
+
+        try {
+            // 1. Fetch content
+            $logs[] = "2. Descargando HTML...";
+            $html = Http::timeout(30)->get($feed->url)->body();
+            $logs[] = "   HTML descargado. Longitud: " . strlen($html) . " caracteres.";
+
+            // 2. Extract content based on selector
+            $logs[] = "3. Extrayendo contenido con selector '{$feed->selector}'...";
+            // Use same logic as OllamaService roughly
+            if ($feed->selector === 'body') {
+                $content = $html;
+            } else {
+                // Simple DOM extraction similar to Service
+                $dom = new \DOMDocument();
+                @$dom->loadHTML($html, LIBXML_NOERROR);
+                $xpath = new \DOMXPath($dom);
+                $nodes = $xpath->query("//" . $feed->selector); // simplistic approximation for diagnosis
+                $content = '';
+                if ($nodes->length > 0) {
+                    foreach ($nodes as $node) {
+                        $content .= $dom->saveHTML($node);
+                    }
+                } else {
+                     // Fallback to simple tag extraction if xpath fails or is just a tag name
+                     // The Service has robust 'cleanHtml' logic, let's instantiate the service to use it if possible
+                     // but for raw visibility let's stick to basics or use the service functions if public.
+                     $content = $html; // Fallback for visualization if extractor fails here
+                     $logs[] = "   ⚠️ No se encontraron nodos con ese selector estricto. Usando HTML completo para prueba.";
+                }
+            }
+            
+            // Clean HTML (simulate service cleaning)
+            $cleanContent = strip_tags($content, '<a><h1><h2><h3><h4><h5><h6><p><article>');
+            // Limit content size
+            $cleanContent = substr($cleanContent, 0, 35000); 
+            $logs[] = "   Contenido limpio (primeros 500 chars): " . substr($cleanContent, 0, 500) . "...";
+            $logs[] = "   Longitud final enviada a IA: " . strlen($cleanContent);
+
+            // 3. Send to AI
+            $logs[] = "4. Enviando a Modelo IA (Ollama/OpenRouter)... esto puede tardar.";
+            
+            // We use the actual service to get the extraction
+            $service = app(\App\Services\OllamaService::class);
+            $extracted = $service->extractArticlesFromHtml($cleanContent, $feed->url);
+            
+            $duration = round(microtime(true) - $startTime, 2);
+            $logs[] = "5. Respuesta recibida en {$duration}s.";
+            
+            $articleCount = count($extracted);
+            if ($articleCount > 0) {
+                $logs[] = "✅ ÉXITO: Se encontraron {$articleCount} artículos.";
+            } else {
+                $logs[] = "❌ FALLO: No se extrajeron artículos válidos.";
+                $logs[] = "   Posibles causas: El modelo 'alucinó' texto que no eran enlaces, o el formato de respuesta no fue 'Titulo | URL'.";
+            }
+
+            return response()->json([
+                'success' => true,
+                'logs' => $logs,
+                'articles' => $extracted
+            ]);
+
+        } catch (\Exception $e) {
+            $logs[] = "❌ ERROR CRÍTICO: " . $e->getMessage();
+            return response()->json([
+                'success' => false,
+                'logs' => $logs,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

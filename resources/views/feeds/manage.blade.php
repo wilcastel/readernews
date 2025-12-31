@@ -98,6 +98,13 @@
                                      <button x-show="editing" @click="editing = false; document.getElementById('form-{{ $feed->id }}').submit()" class="text-xs bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-md">Save</button>
                                      <button x-show="editing" @click="editing = false; url='{{ $feed->url }}'" class="text-xs text-surface-500 hover:text-surface-700 px-2">Cancel</button>
 
+                                    <!-- Actions for AI Feeds Check/Diagnose -->
+                                    @if(!$feed->is_rss)
+                                    <button @click="$dispatch('open-diagnosis', { id: {{ $feed->id }}, url: '{{ $feed->url }}' })" class="p-2 text-surface-400 hover:text-purple-600 transition-colors" title="Diagnose AI Extraction">
+                                        <ion-icon name="bug-outline" class="text-lg"></ion-icon>
+                                    </button>
+                                    @endif
+
                                     <form action="{{ route('feeds.refresh', $feed) }}" method="POST" class="inline">
                                         @csrf
                                         <button type="submit" class="p-2 text-surface-400 hover:text-primary-600 transition-colors" title="Force Refresh">
@@ -130,6 +137,93 @@
                         @endif
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diagnosis Modal -->
+    <div x-data="{ 
+        isOpen: false, 
+        logs: [], 
+        feedUrl: '', 
+        isLoading: false,
+        diagnose(feedId) {
+            this.isLoading = true;
+            this.logs = ['Starting diagnosis...'];
+            this.isOpen = true;
+            fetch(`/feed/${feedId}/diagnose`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.isLoading = false;
+                if (data.logs) {
+                    this.logs = data.logs;
+                } else {
+                    this.logs = ['Error: No logs returned.', JSON.stringify(data)];
+                }
+            })
+            .catch(err => {
+                this.isLoading = false;
+                this.logs.push('Network Error: ' + err);
+            });
+        } 
+    }" 
+    @open-diagnosis.window="feedUrl = $event.detail.url; diagnose($event.detail.id)"
+    x-show="isOpen" 
+    style="display: none;"
+    class="fixed inset-0 z-50 overflow-y-auto" 
+    aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div x-show="isOpen" 
+                 x-transition:enter="ease-out duration-300" 
+                 x-transition:enter-start="opacity-0" 
+                 x-transition:enter-end="opacity-100" 
+                 x-transition:leave="ease-in duration-200" 
+                 x-transition:leave-start="opacity-100" 
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+                 aria-hidden="true" 
+                 @click="isOpen = false"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div x-show="isOpen" 
+                 x-transition:enter="ease-out duration-300" 
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                 x-transition:leave="ease-in duration-200" 
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="inline-block align-bottom bg-white dark:bg-surface-900 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+                
+                <div class="bg-white dark:bg-surface-900 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-surface-900 dark:text-white" id="modal-title">
+                                Diagnóstico AI: <span x-text="feedUrl" class="text-sm font-normal text-surface-500"></span>
+                            </h3>
+                            <div class="mt-4">
+                                <div class="bg-black text-green-400 font-mono text-xs p-4 rounded-md overflow-x-auto h-96 whitespace-pre-wrap">
+                                    <template x-for="log in logs">
+                                        <div x-text="log" class="mb-1 border-b border-gray-800 pb-1"></div>
+                                    </template>
+                                    <div x-show="isLoading" class="animate-pulse mt-2">... Procesando solicitud ...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-surface-50 dark:bg-surface-800 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" @click="isOpen = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cerrar
+                    </button>
+                </div>
             </div>
         </div>
     </div>

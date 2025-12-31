@@ -11,7 +11,9 @@
              x-data="{ 
                 provider: '{{ $provider }}',
                 isLoading: false,
+                isTesting: false,
                 fetchedModels: [],
+                testResult: null,
                 
                 async scanModels(currentProvider, url, key = '') {
                     this.isLoading = true;
@@ -41,6 +43,36 @@
                          alert('Connection failed.');
                     } finally {
                         this.isLoading = false;
+                    }
+                },
+
+                async testModel(currentProvider, url, model, key = '') {
+                    this.isTesting = true;
+                    this.testResult = null;
+                    try {
+                         const response = await fetch('{{ route('settings.test-model') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                            },
+                            body: JSON.stringify({ 
+                                provider: currentProvider, 
+                                url: url, 
+                                model: model,
+                                key: key 
+                            })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.testResult = { type: 'success', message: data.message };
+                        } else {
+                            this.testResult = { type: 'error', message: data.error };
+                        }
+                    } catch (e) {
+                         this.testResult = { type: 'error', message: 'Connection failed.' };
+                    } finally {
+                        this.isTesting = false;
                     }
                 }
              }">
@@ -76,6 +108,14 @@
                     </div>
                 </div>
 
+                <!-- Test Result Feedback -->
+                <div x-show="testResult" style="display: none;" class="mb-4 p-4 rounded-md" :class="testResult && testResult.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'">
+                    <div class="flex items-center">
+                        <ion-icon :name="testResult && testResult.type === 'success' ? 'checkmark-circle-outline' : 'alert-circle-outline'" class="mr-2 text-xl"></ion-icon>
+                        <span x-text="testResult ? testResult.message : ''"></span>
+                    </div>
+                </div>
+
                 <!-- Ollama Settings -->
                 <div x-show="provider === 'ollama'" x-transition class="space-y-4" x-data="{ url: '{{ $ollama_url }}', model: '{{ $ollama_model }}' }">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -89,6 +129,9 @@
                                 <input type="text" name="ollama_model" x-model="model" class="w-full rounded-md border-gray-300 dark:border-surface-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-surface-800 text-slate-900 dark:text-white sm:text-sm p-2 border" placeholder="e.g. qwen3:4b">
                                 <button type="button" @click="scanModels('ollama', url)" class="px-3 py-2 bg-slate-200 dark:bg-surface-700 rounded hover:bg-slate-300 dark:hover:bg-surface-600 transition" title="Escanear modelos" :disabled="isLoading">
                                     <ion-icon :name="isLoading ? 'hourglass-outline' : 'search-outline'"></ion-icon>
+                                </button>
+                                <button type="button" @click="testModel('ollama', url, model)" class="px-3 py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition" title="Probar Modelo" :disabled="isTesting">
+                                    <ion-icon :name="isTesting ? 'hourglass-outline' : 'flask-outline'"></ion-icon>
                                 </button>
                             </div>
                             <!-- Model Selector -->
@@ -119,6 +162,9 @@
                             <input type="text" name="openrouter_model" x-model="model" class="w-full rounded-md border-gray-300 dark:border-surface-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-surface-800 text-slate-900 dark:text-white sm:text-sm p-2 border" placeholder="e.g. google/gemini-2.0-flash-exp:free">
                             <button type="button" @click="scanModels('openrouter', '', key)" class="px-3 py-2 bg-slate-200 dark:bg-surface-700 rounded hover:bg-slate-300 dark:hover:bg-surface-600 transition" title="Listar modelos" :disabled="isLoading">
                                 <ion-icon :name="isLoading ? 'hourglass-outline' : 'search-outline'"></ion-icon>
+                            </button>
+                            <button type="button" @click="testModel('openrouter', '', model, key)" class="px-3 py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition" title="Probar Modelo" :disabled="isTesting">
+                                <ion-icon :name="isTesting ? 'hourglass-outline' : 'flask-outline'"></ion-icon>
                             </button>
                         </div>
                         <div x-show="fetchedModels.length > 0 && provider === 'openrouter'" class="mt-2">
@@ -152,6 +198,9 @@
                                 <input type="text" name="openai_model" x-model="model" class="w-full rounded-md border-gray-300 dark:border-surface-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-surface-800 text-slate-900 dark:text-white sm:text-sm p-2 border" placeholder="local-model">
                                 <button type="button" @click="scanModels('openai', url, key)" class="px-3 py-2 bg-slate-200 dark:bg-surface-700 rounded hover:bg-slate-300 dark:hover:bg-surface-600 transition" title="Escanear LM Studio" :disabled="isLoading">
                                     <ion-icon :name="isLoading ? 'hourglass-outline' : 'search-outline'"></ion-icon>
+                                </button>
+                                <button type="button" @click="testModel('openai', url, model, key)" class="px-3 py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition" title="Probar Modelo" :disabled="isTesting">
+                                    <ion-icon :name="isTesting ? 'hourglass-outline' : 'flask-outline'"></ion-icon>
                                 </button>
                             </div>
                             <div x-show="fetchedModels.length > 0 && provider === 'openai'" class="mt-2">

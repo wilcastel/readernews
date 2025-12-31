@@ -156,6 +156,8 @@ EOT;
         $articles = [];
             
         // STRATEGY 1: Parse as pipe-delimited text lines
+        \Log::info("Raw LLM Response: " . substr($responseText, 0, 500) . "..."); // Log first 500 chars
+
         $lines = explode("\n", $responseText);
         foreach ($lines as $line) {
             $line = trim($line);

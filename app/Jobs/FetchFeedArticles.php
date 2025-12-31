@@ -33,6 +33,8 @@ class FetchFeedArticles implements ShouldQueue
 
     protected function scrapeWithAi(OllamaService $ollama): void
     {
+        \Log::info("Starting AI scrape for feed: " . $this->feed->name);
+        
         $response = \Illuminate\Support\Facades\Http::withoutVerifying()->withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         ])->get($this->feed->url);
@@ -42,32 +44,111 @@ class FetchFeedArticles implements ShouldQueue
              return;
         }
 
-        $articles = $ollama->extractArticlesFromHtml($response->body(), $this->feed->selector);
+        $html = $response->body();
+        
+        // 1. Selector Extraction (if specific selector provided)
+        if ($this->feed->selector && $this->feed->selector !== 'body') {
+            $dom = new \DOMDocument();
+            @$dom->loadHTML($html, LIBXML_NOERROR);
+            $xpath = new \DOMXPath($dom);
+            // Try query
+            $nodes = @$xpath->query("//" . $this->feed->selector); 
+            // If that fails (invalid xpath), try class match
+            if (!$nodes || $nodes->length === 0) {
+                 // fallback to simpler check e.g. "article" logic inside service if needed
+                 // but for now let's adhere to consistent logic
+            } else {
+                $extractedContent = '';
+                foreach ($nodes as $node) {
+                    $extractedContent .= $dom->saveHTML($node);
+                }
+                if (!empty($extractedContent)) {
+                    $html = $extractedContent;
+                }
+            }
+        }
+
+        // 2. Clean and Limit (Crucial step added to match Diagnose)
+        $cleanContent = strip_tags($html, '<a><h1><h2><h3><h4><h5><h6><p><article><li><ul><ol>');
+        $cleanContent = substr($cleanContent, 0, 35000);
+
+        \Log::info("Sending content length " . strlen($cleanContent) . " to AI Service.");
+
+        $articles = $ollama->extractArticlesFromHtml($cleanContent, $this->feed->url);
+        
+        \Log::info("AI Service returned " . count($articles) . " articles.");
+
+        // FEATURE request: Save the result momentarily
+        try {
+            \Illuminate\Support\Facades\Storage::put(
+                'scrapes/feed_' . $this->feed->id . '_latest.json', 
+                json_encode($articles, JSON_PRETTY_PRINT)
+            );
+            \Log::info("Saved scrape result to scrapes/feed_{$this->feed->id}_latest.json");
+        } catch (\Exception $e) {
+            \Log::warning("Could not save scrape dump: " . $e->getMessage());
+        }
+
+        $newCount = 0;
+        $skipCount = 0;
 
         foreach ($articles as $item) {
             // Validate URL
-            if (empty($item['url'])) continue;
+            if (empty($item['url'])) {
+                $skipCount++;
+                continue;
+            }
 
-            // Fix relative URLs
-            $url = $item['url'];
-            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            // Fix relative URLs & Clean garbage
+            $url = trim($item['url']);
+            
+            // Sometimes the model leaves a trailing pipe or "null" text if parsing failed
+            $url = preg_replace('/\|\s*null$/i', '', $url);
+            $url = trim($url, " \t\n\r\0\x0B|."); 
+
+            // Check if it's already absolute
+            if (preg_match('#^https?://#i', $url)) {
+                 // It is absolute, just ensure it's valid
+                 if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                     // Try to fix common issues like spaces encoded oddly
+                     $url = str_replace(' ', '%20', $url);
+                 }
+            } else {
+                // It is relative
                 $baseUrl = rtrim($this->feed->url, '/');
                 $url = $baseUrl . '/' . ltrim($url, '/');
             }
 
-            // Uniqueness check per feed
-            if (Article::where('url', $url)->where('feed_id', $this->feed->id)->exists()) continue;
+            // Final validity check
+            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                \Log::warning("Skipping invalid URL after cleanup: " . $url);
+                $skipCount++;
+                continue;
+            }
 
-            Article::create([
-                'feed_id' => $this->feed->id,
-                'title' => html_entity_decode($item['title']),
-                'url' => $url,
-                'author' => $item['author'] ?? null,
-                'summary' => $item['summary'] ?? '',
-                'published_at' => isset($item['date']) ? Carbon::parse($item['date']) : now(),
-                // Image extraction could be improved here
-            ]);
+            // Uniqueness check per feed
+            if (Article::where('url', $url)->where('feed_id', $this->feed->id)->exists()) {
+                $skipCount++;
+                continue;
+            }
+
+            try {
+                Article::create([
+                    'feed_id' => $this->feed->id,
+                    'title' => html_entity_decode($item['title']),
+                    'url' => $url,
+                    'author' => $item['author'] ?? null,
+                    'summary' => $item['summary'] ?? '',
+                    'published_at' => isset($item['date']) ? Carbon::parse($item['date']) : now(),
+                    // Image extraction could be improved here
+                ]);
+                $newCount++;
+            } catch (\Exception $e) {
+                \Log::error("Error creating article: " . $e->getMessage());
+            }
         }
+        
+        \Log::info("Job Finished for feed {$this->feed->name}: {$newCount} created, {$skipCount} duplicate/skipped.");
 
         $this->feed->update(['last_scraped_at' => now()]);
     }

@@ -18,6 +18,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/favorites', [FeedController::class, 'favorites'])->name('favorites');
     Route::get('/folder/{folder}', [FeedController::class, 'folder'])->name('folder.show');
     Route::get('/feed/{feed}', [FeedController::class, 'feed'])->name('feed.show');
+    Route::post('/feed/{feed}/check', [FeedController::class, 'check'])->name('feed.check');
+    Route::post('/feed/{feed}/diagnose', [FeedController::class, 'diagnose'])->name('feed.diagnose');
 
     Route::post('/feeds', [FeedController::class, 'store'])->name('feeds.store');
     Route::put('/feeds/{feed}', [FeedController::class, 'update'])->name('feeds.update');
@@ -34,6 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('/settings/fetch-models', [SettingsController::class, 'fetchModels'])->name('settings.fetch-models');
+    Route::post('/settings/test-model', [SettingsController::class, 'testModel'])->name('settings.test-model');
     
     Route::get('/tags/{tag:slug}', [TagController::class, 'show'])->name('tags.show');
     Route::post('/tags', [TagController::class, 'store'])->name('tags.store');
