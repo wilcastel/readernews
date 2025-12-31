@@ -198,6 +198,82 @@
             </div>
 
             <div class="flex items-center gap-2">
+                 <!-- AI Writer Button -->
+                 <div x-data="{
+                    open: false,
+                    generating: false,
+                    result: '',
+                    generate() {
+                        this.generating = true;
+                        fetch('{{ route('ai.generate') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                article_id: {{ $article->id }},
+                                prompt_id: 1 // Default journalist prompt
+                            })
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            this.generating = false;
+                            if(data.success) {
+                                this.result = data.content;
+                            } else {
+                                alert('Error: ' + data.error);
+                            }
+                        });
+                    }
+                }">
+                    <button @click="open = true" class="px-3 py-1.5 rounded-lg text-sm font-medium text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors flex items-center gap-2">
+                        <ion-icon name="sparkles" class="text-yellow-500"></ion-icon> Rewrite
+                    </button>
+                    
+                    <!-- AI Modal -->
+                    <div x-show="open" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+                        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="open = false"></div>
+                        <div class="relative bg-white dark:bg-surface-900 rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden border border-surface-200 dark:border-surface-700">
+                            <div class="p-4 border-b border-surface-200 dark:border-surface-700 flex justify-between items-center bg-surface-50 dark:bg-surface-950">
+                                <h3 class="font-bold text-lg dark:text-white flex items-center gap-2">
+                                    <ion-icon name="sparkles" class="text-yellow-500"></ion-icon>
+                                    AI Journalist
+                                </h3>
+                                <button @click="open = false" class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200">
+                                    <ion-icon name="close" class="text-xl"></ion-icon>
+                                </button>
+                            </div>
+                            <div class="p-6 overflow-y-auto flex-1 bg-white dark:bg-surface-900">
+                                <div x-show="!result && !generating" class="text-center py-12">
+                                    <div class="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <ion-icon name="newspaper-outline" class="text-3xl text-yellow-600 dark:text-yellow-400"></ion-icon>
+                                    </div>
+                                    <h4 class="text-xl font-bold text-surface-900 dark:text-white mb-2">Transform Content</h4>
+                                    <p class="text-surface-600 dark:text-surface-400 mb-6 max-w-md mx-auto">Generate a unique, SEO-optimized news article using the Inverted Pyramid style based on this source.</p>
+                                    <button @click="generate()" class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary-500/30 hover:-translate-y-1">
+                                        Generate Article Draft
+                                    </button>
+                                </div>
+                                <div x-show="generating" class="flex flex-col items-center justify-center py-12">
+                                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-surface-100 border-t-primary-600 mb-6"></div>
+                                    <p class="text-surface-900 dark:text-white font-medium animate-pulse">Analyzing content & writing draft...</p>
+                                    <p class="text-sm text-surface-500 mt-2">This might take a moment.</p>
+                                </div>
+                                <div x-show="result">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h4 class="text-xs font-bold uppercase tracking-wider text-surface-400">Generated Draft</h4>
+                                        <button @click="navigator.clipboard.writeText(result); alert('Copied to clipboard!')" class="text-xs font-medium bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-900 dark:text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors">
+                                            <ion-icon name="copy-outline"></ion-icon> Copy Text
+                                        </button>
+                                    </div>
+                                    <div class="bg-surface-50 dark:bg-surface-950 p-6 rounded-xl border border-surface-100 dark:border-surface-800 prose dark:prose-invert max-w-none whitespace-pre-wrap leading-relaxed shadow-inner" x-text="result"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                  <a href="{{ $article->url }}" target="_blank" class="px-3 py-1.5 rounded-lg text-sm font-medium text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors flex items-center gap-2">
                     <ion-icon name="open-outline"></ion-icon> Visit Original
                 </a>

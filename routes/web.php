@@ -20,6 +20,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/notes', [\App\Http\Controllers\NoteController::class, 'index'])->name('notes.index');
     Route::post('/articles/{article}/notes', [\App\Http\Controllers\NoteController::class, 'store'])->name('notes.store');
     Route::delete('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'destroy'])->name('notes.destroy');
+    
+    // Content Generation
+    Route::post('/generate-content', [\App\Http\Controllers\ContentGenerationController::class, 'generate'])->name('ai.generate');
 
     Route::get('/saved', [FeedController::class, 'saved'])->name('saved');
     Route::get('/favorites', [FeedController::class, 'favorites'])->name('favorites');
