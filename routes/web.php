@@ -14,6 +14,12 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [FeedController::class, 'index'])->name('dashboard'); // Mapping /dashboard to our main view
+    Route::get('/search', [\App\Http\Controllers\SearchController::class, 'index'])->name('search');
+    
+    // Notes
+    Route::post('/articles/{article}/notes', [\App\Http\Controllers\NoteController::class, 'store'])->name('notes.store');
+    Route::delete('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'destroy'])->name('notes.destroy');
+
     Route::get('/saved', [FeedController::class, 'saved'])->name('saved');
     Route::get('/favorites', [FeedController::class, 'favorites'])->name('favorites');
     Route::get('/folder/{folder}', [FeedController::class, 'folder'])->name('folder.show');

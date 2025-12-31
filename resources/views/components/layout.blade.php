@@ -409,8 +409,10 @@
                 @endif
 
                 <div class="relative max-w-md w-full">
-                    <ion-icon name="search-outline" class="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"></ion-icon>
-                    <input type="text" placeholder="Search articles..." class="w-full pl-10 pr-4 py-2 rounded-full border border-surface-200 bg-surface-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all">
+                    <form action="{{ route('search') }}" method="GET">
+                        <ion-icon name="search-outline" class="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"></ion-icon>
+                        <input type="text" name="q" placeholder="Search articles..." value="{{ request('q') }}" class="w-full pl-10 pr-4 py-2 rounded-full border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all">
+                    </form>
                 </div>
             </div>
             <div class="flex items-center gap-3">

@@ -216,20 +216,92 @@
             </div>
         </div>
 
-        <!-- Content Area -->
-        <div class="p-6 md:p-10">
-            
-            <!-- Full Content Placeholder / Display -->
-            <div id="article-content" class="prose dark:prose-invert prose-xl max-w-none font-sans leading-relaxed text-surface-800 dark:text-surface-300
-                prose-iframe:w-full prose-iframe:aspect-video prose-iframe:rounded-xl prose-img:rounded-xl">
-                @if($article->content)
-                    {!! $article->content !!}
-                @else
-                    <div class="text-xl font-sans text-surface-600 mb-8 leading-relaxed">
-                        {{ $article->summary }}
-                    </div>
-                @endif
+        <!-- Highlighting & Notes Logic -->
+        <div x-data="{
+             selectionMenu: { show: false, x: 0, y: 0, text: '' },
+             noteForm: { tagName: '', annotation: '' },
+             handleSelection(e) {
+                const selection = window.getSelection();
+                const text = selection.toString().trim();
+                
+                if (text.length > 0) {
+                    const range = selection.getRangeAt(0);
+                    const rect = range.getBoundingClientRect();
+                    
+                    // Show menu above selection
+                    this.selectionMenu = {
+                        show: true,
+                        x: rect.left + (rect.width / 2) - 150, // Center horizontally
+                        y: rect.top + window.scrollY - 160, // Above text
+                        text: text
+                    };
+                } else {
+                    // Only hide if we aren't clicking inside the menu itself
+                    if (!this.$refs.menu.contains(e.target)) {
+                         this.selectionMenu.show = false;
+                    }
+                }
+             },
+             saveNote() {
+                fetch('/articles/{{ $article->id }}/notes', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                    },
+                    body: JSON.stringify({
+                        quote: this.selectionMenu.text,
+                        annotation: this.noteForm.annotation,
+                        tag_name: this.noteForm.tagName
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        this.selectionMenu.show = false;
+                        this.noteForm = { tagName: '', annotation: '' };
+                        alert('Note saved to ' + (data.note.tags[0]?.name || 'uncategorized'));
+                        // Ideally render highlight permanently here
+                    }
+                });
+             }
+        }"
+        @mouseup.document="handleSelection">
+
+            <!-- Selection Popover -->
+            <div x-ref="menu" x-show="selectionMenu.show" 
+                 :style="`top: ${selectionMenu.y}px; left: ${selectionMenu.x}px`"
+                 class="absolute z-50 bg-white dark:bg-surface-800 shadow-xl rounded-xl border border-surface-200 dark:border-surface-700 p-4 w-[300px] flex flex-col gap-3"
+                 style="display: none;">
+                 
+                 <div class="text-xs text-surface-500 font-medium uppercase tracking-wider">Save to Personal Notes</div>
+                 
+                 <div class="bg-surface-50 dark:bg-surface-900 p-2 rounded text-xs italic text-surface-600 dark:text-surface-400 border-l-2 border-primary-500 max-h-20 overflow-y-auto">
+                    &quot;<span x-text="selectionMenu.text"></span>&quot;
+                 </div>
+
+                 <input type="text" x-model="noteForm.tagName" placeholder="#Tag (e.g., Economics)" 
+                        class="w-full text-sm px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-700 dark:bg-surface-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none transition-all">
+                 
+                 <button @click="saveNote()" class="bg-primary-600 hover:bg-primary-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-sm">
+                    Save Highlight
+                 </button>
             </div>
+
+            <div class="p-6 md:p-10">
+                <!-- Content Area -->
+                <div id="article-content" class="prose dark:prose-invert prose-xl max-w-none font-sans leading-relaxed text-surface-800 dark:text-surface-300
+                    prose-iframe:w-full prose-iframe:aspect-video prose-iframe:rounded-xl prose-img:rounded-xl">
+                    @if($article->content)
+                        {!! $article->content !!}
+                    @else
+                        <div class="text-xl font-sans text-surface-600 mb-8 leading-relaxed">
+                            {{ $article->summary }}
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
 
             <!-- Fetch Button (Always visible to allow upgrading content) -->
             <div class="mt-12 text-center py-8 border-t border-dashed border-surface-200">
