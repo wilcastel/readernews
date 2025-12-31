@@ -87,6 +87,17 @@ EOT;
         }
     }
 
+
+
+    public function generateText(string $prompt): string
+    {
+        if ($this->provider === 'openrouter' || $this->provider === 'openai') {
+            return $this->askOpenAICompatible($prompt);
+        } else {
+            return $this->askOllamaBridge($prompt);
+        }
+    }
+
     protected function askOllamaBridge(string $prompt): string
     {
         \Log::info("Sending request to Ollama via Bridge: {$this->model}");

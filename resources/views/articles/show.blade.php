@@ -247,7 +247,37 @@
                     
                     <span x-text="fetching ? 'Extracting Content...' : (hasContent ? 'Re-Extract Full Content' : 'Load Full Article')"></span>
                 </button>
-                 <p class="text-[10px] text-surface-400 mt-3 uppercase tracking-wider" x-show="fetching">Powered by Readability Engine</p>
+                 <p class="text-[10px] text-surface-400 mt-3 uppercase tracking-wider" x-show="fetching && !{{ $isYoutube ? 'true' : 'false' }}">Powered by Readability Engine</p>
+                 
+                 @if($isYoutube)
+                 <div class="mt-4">
+                    <button @click="
+                        fetching = true;
+                        fetch('/articles/{{ $article->id }}/summarize', {
+                             method: 'POST',
+                             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            if(data.success) {
+                                hasContent = true;
+                                document.getElementById('article-content').innerHTML = data.content;
+                            } else {
+                                alert(data.error);
+                            }
+                        })
+                        .catch(e => alert(e))
+                        .finally(() => fetching = false)
+                    " 
+                    class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-medium shadow-sm transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
+                    :disabled="fetching">
+                        <ion-icon name="logo-youtube" x-show="!fetching"></ion-icon>
+                        <ion-icon name="reload" class="animate-spin" x-show="fetching"></ion-icon>
+                        <span x-text="fetching ? 'Analyzing Video...' : 'Summarize Video with AI'"></span>
+                    </button>
+                    <p class="text-[10px] text-surface-400 mt-2">Get a reading summary and transcript</p>
+                 </div>
+                 @endif
             </div>
 
         </div>

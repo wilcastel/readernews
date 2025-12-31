@@ -54,9 +54,9 @@ Para lograr el objetivo de seguir sitios sin feeds RSS:
 ## Futuras Mejoras (V2)
 
 ### Transcripción IA para YouTube
-- Implementar un servicio que extraiga los subtítulos (transcripts) de los videos de YouTube.
-- Utilizar herramientas como `yt-dlp` o APIs de terceros.
-- Procesar el texto extraído con la IA Local para generar un "Resumen de lectura" del video, permitiendo "leer" el contenido del video sin verlo completo.
+- ✅ Implementar un servicio que extraiga los subtítulos (transcripts) de los videos de YouTube.
+- Utilizar herramientas como `youtube-transcript-api` (Python).
+- ✅ Procesar el texto extraído con la IA Local para generar un "Resumen de lectura" del video.
 
 ### Búsqueda Avanzada y Alertas (IA)
 - **Buscador Profundo**: Indexar contenido completo de artículos para búsquedas precisas (Full-Text Search).

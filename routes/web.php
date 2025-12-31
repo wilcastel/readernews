@@ -20,6 +20,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/feed/{feed}', [FeedController::class, 'feed'])->name('feed.show');
     Route::post('/feed/{feed}/check', [FeedController::class, 'check'])->name('feed.check');
     Route::post('/feed/{feed}/diagnose', [FeedController::class, 'diagnose'])->name('feed.diagnose');
+    
+    // YouTube Import
+    Route::post('/youtube/import', [\App\Http\Controllers\YouTubeImportController::class, 'store'])->name('youtube.import');
+    Route::post('/articles/{article}/summarize', [\App\Http\Controllers\YouTubeImportController::class, 'summarize'])->name('articles.summarize');
 
     Route::post('/feeds', [FeedController::class, 'store'])->name('feeds.store');
     Route::put('/feeds/{feed}', [FeedController::class, 'update'])->name('feeds.update');

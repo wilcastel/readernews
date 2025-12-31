@@ -32,7 +32,9 @@
 <body class="h-full font-sans antialiased text-surface-900 dark:text-surface-100 dark:bg-surface-950 flex overflow-hidden"
       x-data="{ 
         openAddModal: false,
+
         openEditModal: false,
+        openVideoModal: false,
         editingFeed: { id: null, name: '', folder_id: '' }
       }"
       @edit-feed.window="
@@ -110,6 +112,28 @@
         </div>
     </div>
 
+    <!-- YouTube Import Modal -->
+    <div x-show="openVideoModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4" style="display: none;">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="openVideoModal = false"></div>
+        <div class="bg-white dark:bg-surface-900 rounded-2xl shadow-xl w-full max-w-md relative z-10 p-6 border border-surface-200 dark:border-surface-800">
+            <h3 class="text-xl font-bold mb-2 dark:text-white">Summarize Video</h3>
+            <p class="text-surface-500 text-sm mb-6">Enter a YouTube URL. AI will generate a summary and transcript.</p>
+            
+            <form action="{{ route('youtube.import') }}" method="POST">
+                @csrf
+                <div class="relative">
+                    <ion-icon name="logo-youtube" class="absolute left-3 top-1/2 -translate-y-1/2 text-red-500"></ion-icon>
+                    <input type="url" name="url" placeholder="https://youtube.com/watch?v=..." required autofocus
+                        class="w-full pl-10 pr-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 transition-all">
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="openVideoModal = false" class="px-4 py-2 text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white font-medium">Cancel</button>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">Summarize</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Expose Edit Function globally for the Sidebar to call -->
     <script>
         function editFeed(id, name, folderId) {
@@ -166,6 +190,11 @@
                 <div class="flex items-center justify-between px-3 mb-2 group">
                     <div class="text-xs font-semibold text-surface-400 uppercase tracking-wider">Your Library</div>
                     <div class="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="text-surface-400 hover:text-red-500 transition-colors mr-2" 
+                            title="Summarize Video"
+                            @click="openVideoModal = true">
+                            <ion-icon name="logo-youtube" class="text-lg"></ion-icon>
+                        </button>
                          <button class="text-surface-400 hover:text-primary-600 transition-colors mr-2" 
                             title="Add Feed"
                             @click="openAddModal = true">
