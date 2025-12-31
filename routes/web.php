@@ -17,6 +17,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/search', [\App\Http\Controllers\SearchController::class, 'index'])->name('search');
     
     // Notes
+    Route::get('/notes', [\App\Http\Controllers\NoteController::class, 'index'])->name('notes.index');
     Route::post('/articles/{article}/notes', [\App\Http\Controllers\NoteController::class, 'store'])->name('notes.store');
     Route::delete('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'destroy'])->name('notes.destroy');
 
