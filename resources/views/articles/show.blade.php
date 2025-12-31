@@ -1,18 +1,18 @@
 <x-layout title="{{ $article->title }}">
     <x-slot name="headerActions">
         <div class="flex items-center gap-4 mr-4 pr-4 border-r border-surface-200 dark:border-surface-700">
-            <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-2 text-surface-500 hover:text-surface-900 dark:text-surface-400 dark:hover:text-surface-100 transition-colors font-medium text-sm whitespace-nowrap">
+            <a href="{{ $backUrl ?? route('dashboard') }}" class="inline-flex items-center gap-2 text-surface-500 hover:text-surface-900 dark:text-surface-400 dark:hover:text-surface-100 transition-colors font-medium text-sm whitespace-nowrap">
                 <ion-icon name="arrow-back-outline"></ion-icon>
                 <span class="hidden md:inline">Back</span>
             </a>
             
             <div class="flex items-center gap-1 bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5">
-                <a href="{{ $previous ? route('articles.show', $previous) : '#' }}" 
+                <a href="{{ $previous ? route('articles.show', ['article' => $previous->id, 'source' => $source ?? null, 'source_id' => $sourceId ?? null]) : '#' }}" 
                    class="p-1.5 rounded-md hover:bg-white dark:hover:bg-surface-700 transition-colors {{ !$previous ? 'opacity-50 pointer-events-none' : 'text-surface-700 dark:text-surface-200' }}"
                    title="Previous Article">
                    <ion-icon name="chevron-up-outline"></ion-icon>
                 </a>
-                <a href="{{ $next ? route('articles.show', $next) : '#' }}" 
+                <a href="{{ $next ? route('articles.show', ['article' => $next->id, 'source' => $source ?? null, 'source_id' => $sourceId ?? null]) : '#' }}" 
                    class="p-1.5 rounded-md hover:bg-white dark:hover:bg-surface-700 transition-colors {{ !$next ? 'opacity-50 pointer-events-none' : 'text-surface-700 dark:text-surface-200' }}"
                    title="Next Article">
                    <ion-icon name="chevron-down-outline"></ion-icon>

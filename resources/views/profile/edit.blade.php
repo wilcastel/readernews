@@ -1,29 +1,31 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Profile') }}
-        </h2>
-    </x-slot>
+<x-layout title="Profile Settings">
+    <div class="max-w-4xl mx-auto py-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold font-serif text-surface-900 dark:text-white mb-2">My Profile</h1>
+            <p class="text-surface-500 font-medium">Manage your account settings and preferences.</p>
+        </div>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+        <div class="space-y-8">
+            <!-- Profile Information -->
+            <div class="p-6 sm:p-8 bg-white dark:bg-surface-900 shadow-sm border border-surface-200 dark:border-surface-800 rounded-xl transition-all hover:shadow-md">
                 <div class="max-w-xl">
                     @include('profile.partials.update-profile-information-form')
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+            <!-- Update Password -->
+            <div class="p-6 sm:p-8 bg-white dark:bg-surface-900 shadow-sm border border-surface-200 dark:border-surface-800 rounded-xl transition-all hover:shadow-md">
                 <div class="max-w-xl">
                     @include('profile.partials.update-password-form')
                 </div>
             </div>
 
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+            <!-- Delete Account -->
+            <div class="p-6 sm:p-8 bg-white dark:bg-surface-900 shadow-sm border border-surface-200 dark:border-surface-800 rounded-xl transition-all hover:shadow-md opacity-80 hover:opacity-100 hover:border-red-200 dark:hover:border-red-900/30">
                 <div class="max-w-xl">
                     @include('profile.partials.delete-user-form')
                 </div>
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-layout>

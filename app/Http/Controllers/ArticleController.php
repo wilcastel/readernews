@@ -12,7 +12,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 
 class ArticleController extends Controller
 {
-    public function show(Article $article)
+    public function show(Article $article, \Illuminate\Http\Request $request)
     {
         // Mark as read for this user
         $user = auth()->user();
@@ -32,20 +32,47 @@ class ArticleController extends Controller
         // Reload relation to have fresh state in view
         $article->load(['users' => fn($q) => $q->where('user_id', $user->id)]);
 
-        // Logic for reading flow (Newest first) - Scoped to User's Feeds
+        // Logic for filtered reading flow
+        $source = $request->query('source'); 
+        $sourceId = $request->query('source_id');
+
+        // Base Query always scoped to user
+        $baseQuery = Article::whereHas('feed', fn($q) => $q->where('user_id', $user->id));
+
+        // Apply Context Filters
+        if ($source === 'feed' && $sourceId) {
+            $baseQuery->where('feed_id', $sourceId);
+        } elseif ($source === 'folder' && $sourceId) {
+             $baseQuery->whereHas('feed', fn($q) => $q->where('folder_id', $sourceId));
+        } elseif ($source === 'favorites') {
+             $baseQuery->whereHas('users', fn($q) => $q->where('user_id', $user->id)->where('is_favorite', true));
+        } elseif ($source === 'saved') {
+             $baseQuery->whereHas('users', fn($q) => $q->where('user_id', $user->id)->where('is_saved', true));
+        }
+
         // Previous = Newer article (above in list)
-        $previous = Article::whereHas('feed', fn($q) => $q->where('user_id', $user->id))
-            ->where('published_at', '>', $article->published_at)
+        $previous = (clone $baseQuery)->where('published_at', '>', $article->published_at)
             ->orderBy('published_at', 'asc') // Create closest newer date
             ->first();
 
         // Next = Older article (below in list)
-        $next = Article::whereHas('feed', fn($q) => $q->where('user_id', $user->id))
-            ->where('published_at', '<', $article->published_at)
+        $next = (clone $baseQuery)->where('published_at', '<', $article->published_at)
             ->orderBy('published_at', 'desc') // Closest older date
             ->first();
 
-        return view('articles.show', compact('article', 'previous', 'next'));
+        // Determine Back URL
+        $backUrl = route('dashboard');
+        if ($source === 'feed' && $sourceId) {
+            $backUrl = route('feed.show', $sourceId);
+        } elseif ($source === 'folder' && $sourceId) {
+            $backUrl = route('folder.show', $sourceId);
+        } elseif ($source === 'favorites') {
+            $backUrl = route('favorites');
+        } elseif ($source === 'saved') {
+            $backUrl = route('saved');
+        }
+
+        return view('articles.show', compact('article', 'previous', 'next', 'backUrl', 'source', 'sourceId'));
     }
 
     public function fetchContent(Article $article)

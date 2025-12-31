@@ -31,7 +31,8 @@ class FeedController extends Controller
 
         $feeds = auth()->user()->feeds; 
 
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
+        $context = ['source' => 'dashboard', 'id' => null];
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context'));
     }
 
     public function saved()
@@ -48,7 +49,8 @@ class FeedController extends Controller
             ->latest('published_at')
             ->simplePaginate(30);
             
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
+        $context = ['source' => 'saved', 'id' => null];
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context'));
     }
 
     public function favorites()
@@ -65,7 +67,8 @@ class FeedController extends Controller
             ->latest('published_at')
             ->simplePaginate(30);
             
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
+        $context = ['source' => 'favorites', 'id' => null];
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context'));
     }
 
     public function folder(Folder $folder)
@@ -82,7 +85,8 @@ class FeedController extends Controller
             ->latest('published_at')
             ->simplePaginate(30);
             
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle'));
+        $context = ['source' => 'folder', 'id' => $folder->id];
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context'));
     }
 
     public function feed(Feed $feed)
@@ -99,7 +103,8 @@ class FeedController extends Controller
             ->latest('published_at')
             ->simplePaginate(30);
             
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'feed'));
+        $context = ['source' => 'feed', 'id' => $feed->id];
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'feed', 'context'));
     }
 
     public function refresh(Feed $feed)

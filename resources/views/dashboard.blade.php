@@ -100,7 +100,7 @@
                         <span class="text-xs text-surface-400">• {{ $article->published_at?->diffForHumans() ?? 'Recently' }}</span>
                     </div>
                     <h2 class="text-xl font-bold font-serif mb-3 text-surface-900 dark:text-white leading-tight group-hover:text-primary-600 transition-colors">
-                        <a href="{{ route('articles.show', $article) }}" @click="markRead()">{{ $article->title }}</a>
+                        <a href="{{ route('articles.show', ['article' => $article->id, 'source' => isset($context) ? $context['source'] : 'dashboard', 'source_id' => isset($context) ? $context['id'] : null]) }}" @click="markRead()">{{ $article->title }}</a>
                     </h2>
                     
                     <!-- Tags on Card -->
