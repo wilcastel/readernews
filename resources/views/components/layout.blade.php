@@ -178,16 +178,15 @@
                             <ion-icon name="star-outline" class="text-lg"></ion-icon>
                             Favorites
                         </div>
+                        @if(auth()->check() && auth()->user()->favoriteArticlesCount() > 0)
+                             <span class="text-xs text-surface-400">{{ auth()->user()->favoriteArticlesCount() }}</span>
+                        @endif
                     </a>
                     <a href="{{ route('notes.index') }}" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('notes.index') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
                         <div class="flex items-center gap-3">
                             <ion-icon name="pencil-outline" class="text-lg"></ion-icon>
                             My Notes
                         </div>
-                    </a>
-                        @if(auth()->check() && auth()->user()->favoriteArticlesCount() > 0)
-                             <span class="text-xs text-surface-400">{{ auth()->user()->favoriteArticlesCount() }}</span>
-                        @endif
                     </a>
                 </div>
             </div>
