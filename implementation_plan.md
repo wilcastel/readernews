@@ -47,7 +47,7 @@ Para lograr el objetivo de seguir sitios sin feeds RSS:
     - ✅ Vista de Lectura con modo inmersivo ("Readability").
     - ✅ Embeds de Video y Redes Sociales.
 5. 🚧 **Implementar AI Scraper (Ollama/LocalLLM)**:
-    - Servicio para comunicarse con Ollama.
+    - ✅ Servicio para comunicarse con Ollama.
     - Prompt para extraer estructura de noticias de HTML crudo.
     - Integración en el Job de actualización.
 

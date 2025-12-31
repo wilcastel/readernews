@@ -101,7 +101,7 @@ EOT;
         
         $process = new \Symfony\Component\Process\Process([
             'node', 
-            base_path('ollama-bridge.cjs')
+            base_path('scripts/ollama-bridge.cjs')
         ]);
         $process->setInput($payload);
         $process->setTimeout(600);
