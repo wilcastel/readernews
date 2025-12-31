@@ -11,7 +11,7 @@ class OllamaService
     protected string $baseUrl;
     protected string $model;
     protected string $provider; // 'ollama' or 'openrouter'
-    protected string $apiKey;
+    protected string $apiKey = '';
 
     public function __get($name)
     {
@@ -175,6 +175,15 @@ EOT;
         $url = $url ?: $this->baseUrl;
         $key = $key ?: $this->apiKey;
         $model = $model ?: $this->model;
+
+        // Auto-fix URL common errors (e.g. user entering base domain instead of full endpoint)
+        if (!empty($url) && !str_ends_with($url, '/chat/completions')) {
+            if (str_ends_with($url, '/v1')) {
+                $url .= '/chat/completions';
+            } elseif (str_ends_with($url, '/v1/')) {
+                $url .= 'chat/completions';
+            }
+        }
 
         \Log::info("Sending request to OpenAI Compatible API: {$model} at {$url}");
 
