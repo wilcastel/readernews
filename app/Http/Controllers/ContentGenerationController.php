@@ -9,10 +9,12 @@ class ContentGenerationController extends Controller
     public function __construct(protected \App\Services\OllamaService $ollama) 
     {}
 
+
     public function generate(Request $request)
     {
         $request->validate([
-            'article_id' => 'required', // Can be single ID (int) or array of IDs
+            'article_id' => 'required_without:note_id', 
+            'note_id' => 'required_without:article_id',
             'prompt_id' => 'required|exists:prompts,id',
             'custom_instructions' => 'nullable|string'
         ]);
@@ -23,14 +25,25 @@ class ContentGenerationController extends Controller
             return response()->json(['error' => 'Prompt not found'], 404);
         }
 
-        // 2. Get Articles Content
-        $articleIds = is_array($request->article_id) ? $request->article_id : [$request->article_id];
-        $articles = \App\Models\Article::whereIn('id', $articleIds)->get();
-        
         $context = "";
-        foreach ($articles as $article) {
-             $text = strip_tags($article->content ?? $article->summary);
-             $context .= "Source: {$article->title}\nContent: " . substr($text, 0, 10000) . "\n\n";
+
+        // 2a. Handle Articles
+        if ($request->filled('article_id')) {
+            $articleIds = is_array($request->article_id) ? $request->article_id : [$request->article_id];
+            $articles = \App\Models\Article::whereIn('id', $articleIds)->get();
+            foreach ($articles as $article) {
+                $text = strip_tags($article->content ?? $article->summary);
+                $context .= "Source Article: {$article->title}\nContent: " . substr($text, 0, 10000) . "\n\n";
+            }
+        }
+
+        // 2b. Handle Notes
+        if ($request->filled('note_id')) {
+            $noteIds = is_array($request->note_id) ? $request->note_id : [$request->note_id];
+            $notes = \App\Models\Note::whereIn('id', $noteIds)->with('article')->get();
+            foreach ($notes as $note) {
+                $context .= "Source Note (from {$note->article->title}):\nQuote: \"{$note->quote}\"\nUser Annotation: {$note->annotation}\n\n";
+            }
         }
         
         // 3. Prepare Final Prompt
