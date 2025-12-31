@@ -202,7 +202,19 @@
                  <div x-data="{
                     open: false,
                     generating: false,
+                    prompts: [],
+                    selectedPrompt: 1,
+                    customInstructions: '',
                     result: '',
+                    init() {
+                         // Fetch prompts for the dropdown
+                         fetch('{{ route('prompts.index') }}', { headers: { 'Accept': 'application/json' } })
+                            .then(r => r.json())
+                            .then(data => {
+                                this.prompts = data;
+                                if(data.length > 0) this.selectedPrompt = data[0].id;
+                            });
+                    },
                     generate() {
                         this.generating = true;
                         fetch('{{ route('ai.generate') }}', {
@@ -213,7 +225,8 @@
                             },
                             body: JSON.stringify({
                                 article_id: {{ $article->id }},
-                                prompt_id: 1 // Default journalist prompt
+                                prompt_id: this.selectedPrompt,
+                                custom_instructions: this.customInstructions
                             })
                         })
                         .then(r => r.json())
@@ -238,34 +251,56 @@
                             <div class="p-4 border-b border-surface-200 dark:border-surface-700 flex justify-between items-center bg-surface-50 dark:bg-surface-950">
                                 <h3 class="font-bold text-lg dark:text-white flex items-center gap-2">
                                     <ion-icon name="sparkles" class="text-yellow-500"></ion-icon>
-                                    AI Journalist
+                                    AI Writer
                                 </h3>
                                 <button @click="open = false" class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200">
                                     <ion-icon name="close" class="text-xl"></ion-icon>
                                 </button>
                             </div>
                             <div class="p-6 overflow-y-auto flex-1 bg-white dark:bg-surface-900">
-                                <div x-show="!result && !generating" class="text-center py-12">
+                                <div x-show="!result && !generating" class="text-center py-6">
                                     <div class="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <ion-icon name="newspaper-outline" class="text-3xl text-yellow-600 dark:text-yellow-400"></ion-icon>
                                     </div>
                                     <h4 class="text-xl font-bold text-surface-900 dark:text-white mb-2">Transform Content</h4>
-                                    <p class="text-surface-600 dark:text-surface-400 mb-6 max-w-md mx-auto">Generate a unique, SEO-optimized news article using the Inverted Pyramid style based on this source.</p>
+                                    <p class="text-surface-600 dark:text-surface-400 mb-6 max-w-md mx-auto">Generate a unique piece based on this source using AI.</p>
+                                    
+                                    <!-- Options -->
+                                    <div class="max-w-sm mx-auto space-y-4 mb-6 text-left">
+                                        <div>
+                                            <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Select Prompt</label>
+                                            <select x-model="selectedPrompt" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
+                                                <template x-for="p in prompts" :key="p.id">
+                                                    <option :value="p.id" x-text="p.name"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                        <div>
+                                             <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Extra Instructions (Optional)</label>
+                                             <textarea x-model="customInstructions" placeholder="e.g. Focus on the positive aspects..." class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm p-2 h-20 placeholder-surface-400"></textarea>
+                                        </div>
+                                    </div>
+
                                     <button @click="generate()" class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary-500/30 hover:-translate-y-1">
-                                        Generate Article Draft
+                                        Generate Draft
                                     </button>
                                 </div>
                                 <div x-show="generating" class="flex flex-col items-center justify-center py-12">
                                     <div class="animate-spin rounded-full h-12 w-12 border-4 border-surface-100 border-t-primary-600 mb-6"></div>
-                                    <p class="text-surface-900 dark:text-white font-medium animate-pulse">Analyzing content & writing draft...</p>
-                                    <p class="text-sm text-surface-500 mt-2">This might take a moment.</p>
+                                    <p class="text-surface-900 dark:text-white font-medium animate-pulse">Running AI Agent...</p> 
+                                    <p class="text-sm text-surface-500 mt-2">Writing your draft...</p>
                                 </div>
                                 <div x-show="result">
                                     <div class="flex items-center justify-between mb-4">
                                         <h4 class="text-xs font-bold uppercase tracking-wider text-surface-400">Generated Draft</h4>
-                                        <button @click="navigator.clipboard.writeText(result); alert('Copied to clipboard!')" class="text-xs font-medium bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-900 dark:text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors">
-                                            <ion-icon name="copy-outline"></ion-icon> Copy Text
-                                        </button>
+                                        <div class="flex gap-2">
+                                            <button @click="result = ''" class="text-xs font-medium text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors">
+                                                <ion-icon name="refresh-outline"></ion-icon> Try Again
+                                            </button>
+                                            <button @click="navigator.clipboard.writeText(result); alert('Copied!')" class="text-xs font-medium bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-900 dark:text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors">
+                                                <ion-icon name="copy-outline"></ion-icon> Copy
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="bg-surface-50 dark:bg-surface-950 p-6 rounded-xl border border-surface-100 dark:border-surface-800 prose dark:prose-invert max-w-none whitespace-pre-wrap leading-relaxed shadow-inner" x-text="result"></div>
                                 </div>

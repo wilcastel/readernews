@@ -13,8 +13,10 @@ class SettingsController extends Controller
     public function index()
     {
         $settings = Setting::where('group', 'ai')->pluck('value', 'key');
+        $prompts = \App\Models\Prompt::all(); // Fetch all prompts
         
         return view('settings.index', [
+            'prompts' => $prompts,
             'provider' => $settings['ai_provider'] ?? 'ollama',
             'ollama_url' => $settings['ollama_url'] ?? 'http://localhost:11434',
             'ollama_model' => $settings['ollama_model'] ?? 'qwen3:4b',

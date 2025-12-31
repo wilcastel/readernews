@@ -9,56 +9,42 @@ class PromptController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        if ($request->wantsJson()) {
+            return response()->json(\App\Models\Prompt::where('is_active', true)->get());
+        }
+        // If not json, it's irrelevant for now as we view prompts in settings/index
+        return redirect()->route('settings.index');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'content' => 'required|string'
+        ]);
+
+        \App\Models\Prompt::create($validated);
+
+        return back()->with('success', 'Prompt created successfully.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function update(Request $request, \App\Models\Prompt $prompt)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'content' => 'required|string'
+        ]);
+
+        $prompt->update($validated);
+
+        return back()->with('success', 'Prompt updated successfully.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function destroy(\App\Models\Prompt $prompt)
     {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $prompt->delete();
+        return back()->with('success', 'Prompt deleted successfully.');
     }
 }

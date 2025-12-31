@@ -227,5 +227,100 @@
 
             </form>
         </div>
-    </div>
+
+        <!-- Prompts Management Section -->
+        <div class="mt-8 bg-white dark:bg-surface-900 rounded-lg border border-slate-200 dark:border-surface-800 shadow-lg p-6 max-w-3xl"
+             x-data="{ 
+                editingPrompt: null,
+                showModal: false,
+                isNew: false,
+                openEdit(prompt) {
+                    this.editingPrompt = { ...prompt }; // Clone object
+                    this.isNew = false;
+                    this.showModal = true;
+                },
+                openCreate() {
+                    this.editingPrompt = { name: '', content: '' };
+                    this.isNew = true;
+                    this.showModal = true;
+                }
+             }">
+            
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-white">Prompts de Redacción</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Personaliza los estilos de escritura para la IA.</p>
+                </div>
+                <button @click="openCreate()" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <ion-icon name="add-outline"></ion-icon> Nuevo Prompt
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                @foreach($prompts as $prompt)
+                <div class="border border-slate-200 dark:border-surface-700 rounded-lg p-4 flex justify-between items-start hover:bg-slate-50 dark:hover:bg-surface-800 transition-colors">
+                    <div>
+                        <h3 class="font-bold text-slate-800 dark:text-white">{{ $prompt->name }}</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono bg-slate-100 dark:bg-surface-950 p-2 rounded max-w-xl truncate">
+                            {{ Str::limit($prompt->content, 100) }}
+                        </p>
+                    </div>
+                    <div class="flex gap-2 ml-4">
+                        <button @click="openEdit({{ $prompt }})" class="p-2 text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 transition-colors" title="Editar">
+                            <ion-icon name="create-outline"></ion-icon>
+                        </button>
+                        @if($prompt->id > 1) <!-- Protect default prompt if desired, or just allow all -->
+                        <form action="{{ route('prompts.destroy', $prompt) }}" method="POST" onsubmit="return confirm('¿Eliminar este prompt?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="p-2 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 transition-colors" title="Eliminar">
+                                <ion-icon name="trash-outline"></ion-icon>
+                            </button>
+                        </form>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+            <!-- Edit/Create Modal -->
+            <div x-show="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
+                <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showModal = false"></div>
+                
+                <div class="relative bg-white dark:bg-surface-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-surface-700">
+                    <form :action="isNew ? '{{ route('prompts.store') }}' : '/prompts/' + editingPrompt.id" method="POST">
+                        @csrf
+                        <template x-if="!isNew">
+                            <input type="hidden" name="_method" value="PUT">
+                        </template>
+
+                        <div class="p-4 border-b border-surface-200 dark:border-surface-700 flex justify-between items-center bg-surface-50 dark:bg-surface-950">
+                            <h3 class="font-bold text-lg dark:text-white" x-text="isNew ? 'Crear Nuevo Prompt' : 'Editar Prompt'"></h3>
+                            <button type="button" @click="showModal = false" class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200">
+                                <ion-icon name="close" class="text-xl"></ion-icon>
+                            </button>
+                        </div>
+                        
+                        <div class="p-6 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nombre</label>
+                                <input type="text" name="name" x-model="editingPrompt.name" required class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm focus:ring-primary-500 focus:border-primary-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                    Contenido del Prompt 
+                                    <span class="text-xs font-normal text-slate-500 ml-1">(Usa <code>@{{content}}</code> donde irá el texto)</span>
+                                </label>
+                                <textarea name="content" x-model="editingPrompt.content" rows="6" required class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm font-mono focus:ring-primary-500 focus:border-primary-500"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border-t border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-950 flex justify-end gap-2">
+                            <button type="button" @click="showModal = false" class="px-4 py-2 text-surface-600 dark:text-surface-400 font-medium text-sm hover:text-surface-900 dark:hover:text-white">Cancelar</button>
+                            <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Guardar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 </x-layout>
