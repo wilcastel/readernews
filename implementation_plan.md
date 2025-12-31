@@ -23,7 +23,7 @@ Para lograr el objetivo de seguir sitios sin feeds RSS:
 ## 3. Funcionalidades Core (Pocket/Inoreader Clone)
 - **Gestión de Feeds/Fuentes**:
   - Soporte RSS tradicional (usando `feed storage` libraries).
-  - Soporte "Smart Scrape" para webs sin RSS (usando la IA).
+  - ✅ Soporte "Smart Scrape" para webs sin RSS (usando Browsershot + IA).
 - **Organización**:
   - Carpetas (Folders) y Etiquetas (Tags).
   - Guardar para después (estilo Pocket).

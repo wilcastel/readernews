@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use SimplePie\SimplePie;
+use Spatie\Browsershot\Browsershot;
 use App\Services\OllamaService;
 
 class FetchFeedArticles implements ShouldQueue
@@ -35,16 +36,31 @@ class FetchFeedArticles implements ShouldQueue
     {
         \Log::info("Starting AI scrape for feed: " . $this->feed->name);
         
-        $response = \Illuminate\Support\Facades\Http::withoutVerifying()->withHeaders([
-            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        ])->get($this->feed->url);
-        
-        if ($response->failed()) {
-             \Log::error("Failed to fetch HTML for AI scraping: " . $this->feed->url);
-             return;
-        }
+        try {
+            \Log::info("Fetching via Browsershot: " . $this->feed->url);
+            
+            $html = Browsershot::url($this->feed->url)
+                ->noSandbox()
+                ->setOption('args', ['--disable-web-security'])
+                ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+                ->windowSize(1920, 1080)
+                ->waitUntilNetworkIdle()
+                ->timeout(60)
+                ->bodyHtml();
 
-        $html = $response->body();
+        } catch (\Exception $e) {
+            \Log::warning("Browsershot connection failed (" . $e->getMessage() . "). Falling back to standard HTTP.");
+            
+            $response = \Illuminate\Support\Facades\Http::withoutVerifying()->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            ])->get($this->feed->url);
+            
+            if ($response->failed()) {
+                 \Log::error("Failed to fetch HTML for AI scraping (HTTP fallback): " . $this->feed->url);
+                 return;
+            }
+            $html = $response->body();
+        }
         
         // 1. Selector Extraction (if specific selector provided)
         if ($this->feed->selector && $this->feed->selector !== 'body') {
