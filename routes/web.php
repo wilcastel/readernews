@@ -72,6 +72,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Prompts
     Route::resource('prompts', \App\Http\Controllers\PromptController::class)->only(['index', 'store', 'update', 'destroy']);
+    
+    // AI Configs
+    Route::resource('ai-configs', \App\Http\Controllers\AiConfigController::class)->except(['show', 'create', 'edit']);
 });
 
 require __DIR__.'/auth.php';

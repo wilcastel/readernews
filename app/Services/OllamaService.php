@@ -89,31 +89,71 @@ EOT;
 
 
 
-    public function generateText(string $prompt): string
+    public function generateText(string $prompt, ?\App\Models\AiConfig $config = null): string
     {
-        if ($this->provider === 'openrouter' || $this->provider === 'openai') {
-            return $this->askOpenAICompatible($prompt);
+        // 1. Determine parameters (Default vs Config)
+        $provider = $this->provider;
+        $baseUrl = $this->baseUrl;
+        $apiKey = $this->apiKey;
+        $model = $this->model;
+
+        if ($config) {
+            $provider = $config->provider;
+            $baseUrl = $config->base_url;
+            $apiKey = $config->api_key;
+            $model = $config->model_id; // Using field 'model_id' from table
+
+            // Logic to handle empty BaseURLs for known providers if needed
+            if (empty($baseUrl)) {
+                if ($provider === 'openrouter') $baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                // Add more defaults if needed, e.g. OpenAI official
+            }
+        }
+
+        // 2. Dispatch
+        if ($provider === 'openrouter' || $provider === 'openai') {
+            return $this->askOpenAICompatible($prompt, $baseUrl, $apiKey, $model);
         } else {
-            return $this->askOllamaBridge($prompt);
+            // Ollama: we need to pass the custom URL if it's different, 
+            // but the bridge script currently reads ENV or uses default.
+            // If the user sets a custom Base URL for Ollama Config, we might need to modify the bridge or passed params.
+            // For now, assume common Ollama bridge handles 'model'. 
+            // Note: The bridge script currently hardcodes localhost:11434 usually unless passed.
+            // Let's pass the URL to the bridge if supported, or just model.
+            return $this->askOllamaBridge($prompt, $model, $baseUrl); 
         }
     }
 
-    protected function askOllamaBridge(string $prompt): string
+    protected function askOllamaBridge(string $prompt, string $modelOverride = '', string $urlOverride = ''): string
     {
-        \Log::info("Sending request to Ollama via Bridge: {$this->model}");
+        $model = $modelOverride ?: $this->model;
+        \Log::info("Sending request to Ollama via Bridge: {$model}");
             
-        $payload = json_encode([
-            'model' => $this->model,
+        $payloadData = [
+            'model' => $model,
             'prompt' => $prompt,
             'stream' => false,
-            'format' => '', // Disable JSON mode for text instructions
+            'format' => '', 
             'options' => ['temperature' => 0.1]
-        ], JSON_UNESCAPED_SLASHES);
+        ];
+
+        // Ensure we handle URL override if your bridge supports it. 
+        // If the bridge script allows custom host via args or payload, usage here.
+        // Assuming your bridge script primarily just talks to standard port. 
+        // We will keep it simple: model is the key variant.
+        
+        $payload = json_encode($payloadData, JSON_UNESCAPED_SLASHES);
         
         $process = new \Symfony\Component\Process\Process([
             'node', 
             base_path('scripts/ollama-bridge.cjs')
         ]);
+        
+        // Pass custom URL via ENV if needed by the node script
+        if ($urlOverride) {
+            $process->setEnv(['OLLAMA_HOST' => $urlOverride]);
+        }
+
         $process->setInput($payload);
         $process->setTimeout(600);
         $process->run();
@@ -129,18 +169,23 @@ EOT;
         return $jsonResponse['response'] ?? '';
     }
 
-    protected function askOpenAICompatible(string $prompt): string
+    protected function askOpenAICompatible(string $prompt, string $url = '', string $key = '', string $model = ''): string
     {
-        \Log::info("Sending request to OpenAI Compatible API ({$this->provider}): {$this->model}");
+        // Fallbacks to instance defaults
+        $url = $url ?: $this->baseUrl;
+        $key = $key ?: $this->apiKey;
+        $model = $model ?: $this->model;
 
-        $response = Http::withToken($this->apiKey)
+        \Log::info("Sending request to OpenAI Compatible API: {$model} at {$url}");
+
+        $response = Http::withToken($key)
             ->withHeaders([
-                'HTTP-Referer' => config('app.url'), // Required by OpenRouter
+                'HTTP-Referer' => config('app.url'), 
                 'X-Title' => config('app.name'),
             ])
-            ->timeout(120) // Increased timeout for local models
-            ->post($this->baseUrl, [
-                'model' => $this->model,
+            ->timeout(120) 
+            ->post($url, [
+                'model' => $model,
                 'messages' => [
                     ['role' => 'user', 'content' => $prompt]
                 ],
@@ -154,7 +199,6 @@ EOT;
 
         $json = $response->json();
         
-        // Log usage if available
         if (isset($json['usage'])) {
              \Log::info("AI Usage: " . json_encode($json['usage']));
         }

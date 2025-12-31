@@ -2,9 +2,14 @@
     <div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
         
         <!-- Header -->
-        <div class="mb-8">
-            <h1 class="text-2xl md:text-3xl text-slate-800 dark:text-white font-bold">Configuración de IA</h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Gestiona el proveedor de Inteligencia Artificial para el scraper.</p>
+        <div class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl md:text-3xl text-slate-800 dark:text-white font-bold">Configuración</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Gestiona tus preferencias.</p>
+            </div>
+            <a href="{{ route('ai-configs.index') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                <ion-icon name="hardware-chip-outline"></ion-icon> Gestionar Motores IA
+            </a>
         </div>
 
         <div class="bg-white dark:bg-surface-900 rounded-lg border border-slate-200 dark:border-surface-800 shadow-lg p-6 max-w-3xl" 

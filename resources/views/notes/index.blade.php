@@ -13,7 +13,9 @@
             loading: true,
             showAiModal: false,
             prompts: [],
+            aiConfigs: [],
             selectedPrompt: 1,
+            selectedAiConfig: '',
             customInstructions: '',
             result: '',
             generating: false,
@@ -21,6 +23,7 @@
             init() {
                 this.fetchNotes();
                 this.fetchPrompts();
+                this.fetchAiConfigs();
             },
             
             fetchNotes() {
@@ -42,6 +45,12 @@
                         this.prompts = data;
                         if(data.length > 0) this.selectedPrompt = data[0].id;
                     });
+            },
+
+            fetchAiConfigs() {
+                fetch('{{ route('ai-configs.index') }}', { headers: { 'Accept': 'application/json' } })
+                    .then(r => r.json())
+                    .then(data => this.aiConfigs = data);
             },
 
             deleteNote(id) {
@@ -71,6 +80,7 @@
                     body: JSON.stringify({
                         note_id: this.selected, // Sending Note IDs
                         prompt_id: this.selectedPrompt,
+                        ai_config_id: this.selectedAiConfig,
                         custom_instructions: this.customInstructions
                     })
                 })
@@ -213,6 +223,20 @@
                             
                             <!-- Options -->
                             <div class="max-w-sm mx-auto space-y-4 mb-6 text-left">
+                                <!-- AI Engine Selection -->
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-surface-500 mb-1">AI Model Engine</label>
+                                    <select x-model="selectedAiConfig" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
+                                        <option value="">System Default (Ollama)</option>
+                                        <option value="round-robin">🔄 Round Robin (Free Tier)</option>
+                                        <optgroup label="My Providers">
+                                            <template x-for="c in aiConfigs" :key="c.id">
+                                                <option :value="c.id" x-text="c.name"></option>
+                                            </template>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                
                                 <div>
                                     <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Select Logic</label>
                                     <select x-model="selectedPrompt" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
