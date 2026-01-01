@@ -72,10 +72,11 @@
              <div class="w-full aspect-video bg-black relative z-10">
                 <iframe 
                     class="w-full h-full"
-                    src="https://www.youtube.com/embed/{{ $videoId }}?autoplay=0" 
+                    src="https://www.youtube-nocookie.com/embed/{{ $videoId }}?feature=oembed&rel=0" 
                     title="YouTube video player" 
                     frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                     allowfullscreen>
                 </iframe>
             </div>
