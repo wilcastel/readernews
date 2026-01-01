@@ -7,7 +7,7 @@ def get_transcript(video_id):
     try:
         # Try to fetch transcript (prefer manual, fallback to auto-generated)
         # ADAPTATION: Version 1.2.3 seemingly uses 'list' instead of 'list_transcripts'
-        # ADAPTATION: Version 1.2.3 seemingly uses 'list' instead of 'list_transcripts' and requires instantiation
+        
         if hasattr(YouTubeTranscriptApi, 'list_transcripts'):
              transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         else:
@@ -15,15 +15,15 @@ def get_transcript(video_id):
              transcript_list = api.list(video_id)
         
         # Prefer manually created transcripts, then auto-generated
-        # Prefer English or Spanish
+        # Prefer English, Spanish
         try:
-            transcript = transcript_list.find_manually_created(['en', 'es'])
+            transcript = transcript_list.find_manually_created(['es', 'en', 'es-419'])
         except:
             try:
-                transcript = transcript_list.find_generated(['en', 'es'])
+                transcript = transcript_list.find_generated(['es', 'en', 'es-419'])
             except:
                 # Fallback to whatever is available
-                transcript = transcript_list.find_transcript(['en', 'es'])
+                transcript = transcript_list.find_transcript(['es', 'en', 'es-419'])
         
         fetched_transcript = transcript.fetch()
         
