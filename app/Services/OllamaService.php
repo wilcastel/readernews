@@ -49,6 +49,21 @@ class OllamaService
 
     public function extractArticlesFromHtml(string $html, ?string $selector = null): array
     {
+        // SMART FALLBACK: If we are using default Ollama (local) but have Remote Configs active in DB,
+        // switch to one of them to ensure this works on Remote Servers where localhost:11434 is missing.
+        if ($this->provider === 'ollama' || $this->baseUrl === 'http://localhost:11434') {
+             $remoteConfig = \App\Models\AiConfig::where('is_active', true)
+                ->where('provider', '!=', 'ollama')
+                ->where('mode', '!=', 'local') // Explicitly avoid local modes
+                ->inRandomOrder() // Simple load balancing if multiple exist
+                ->first();
+                
+             if ($remoteConfig) {
+                 \Log::info("Switching AI Provider for extraction: Local -> " . $remoteConfig->name);
+                 $this->useConfig($remoteConfig);
+             }
+        }
+
         // 1. Clean HTML to reduce token usage
         $cleanHtml = $this->cleanHtmlForContext($html, $selector);
 
@@ -71,7 +86,8 @@ EOT;
         try {
             $responseText = '';
 
-            if ($this->provider === 'openrouter' || $this->provider === 'openai') {
+            // Check provider again after potential swap
+            if ($this->provider === 'openrouter' || $this->provider === 'openai' || $this->provider === 'groq' || $this->provider === 'cerebras') {
                 $responseText = $this->askOpenAICompatible($prompt);
             } else {
                 $responseText = $this->askOllamaBridge($prompt);
@@ -87,7 +103,20 @@ EOT;
         }
     }
 
-
+    // Helper to switch context dynamically
+    protected function useConfig(\App\Models\AiConfig $config)
+    {
+        $this->provider = $config->provider;
+        $this->baseUrl = $config->base_url;
+        $this->apiKey = $config->api_key;
+        $this->model = $config->model_id;
+        
+        // Normalize provider for dispatch logic
+        if (!in_array($this->provider, ['ollama', 'openrouter', 'openai'])) {
+             // Most custom providers (Groq, Cerebras, etc) are OpenAI compatible
+             $this->provider = 'openai';
+        }
+    }
 
     public function generateText(string $prompt, ?\App\Models\AiConfig $config = null): string
     {
@@ -107,6 +136,11 @@ EOT;
             if (empty($baseUrl)) {
                 if ($provider === 'openrouter') $baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
                 // Add more defaults if needed, e.g. OpenAI official
+            }
+            
+            // Normalize for dispatch
+             if (!in_array($provider, ['ollama', 'openrouter', 'openai'])) {
+                 $provider = 'openai';
             }
         }
 
