@@ -33,6 +33,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // YouTube Import
     Route::post('/youtube/import', [\App\Http\Controllers\YouTubeImportController::class, 'store'])->name('youtube.import');
+    Route::post('/web/import', [\App\Http\Controllers\WebImportController::class, 'store'])->name('web.import');
     Route::post('/articles/{article}/summarize', [\App\Http\Controllers\YouTubeImportController::class, 'summarize'])->name('articles.summarize');
 
     Route::post('/feeds', [FeedController::class, 'store'])->name('feeds.store');
@@ -62,6 +63,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/articles/{article}/toggle-saved', [ArticleController::class, 'toggleSaved'])->name('articles.toggle-saved');
     Route::post('/articles/{article}/toggle-favorite', [ArticleController::class, 'toggleFavorite'])->name('articles.toggle-favorite');
     Route::post('/articles/{article}/mark-read', [ArticleController::class, 'markRead'])->name('articles.mark-read');
+    Route::delete('/articles/{article}', [ArticleController::class, 'destroy'])->name('articles.destroy'); // Add Delete Route
     
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.store');
     Route::delete('/folders/{folder}', [FolderController::class, 'destroy'])->name('folders.destroy');
