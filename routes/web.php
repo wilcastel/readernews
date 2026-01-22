@@ -65,6 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/articles/{article}/toggle-favorite', [ArticleController::class, 'toggleFavorite'])->name('articles.toggle-favorite');
     Route::post('/articles/{article}/mark-read', [ArticleController::class, 'markRead'])->name('articles.mark-read');
     Route::delete('/articles/{article}', [ArticleController::class, 'destroy'])->name('articles.destroy'); // Add Delete Route
+    Route::get('/articles/{article}/fetch-modal-content', [ArticleController::class, 'fetchModalContent'])->name('articles.fetch-modal');
     
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.store');
     Route::delete('/folders/{folder}', [FolderController::class, 'destroy'])->name('folders.destroy');
