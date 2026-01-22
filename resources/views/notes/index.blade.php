@@ -16,7 +16,7 @@
             prompts: [],
             aiConfigs: [],
             selectedPrompt: 1,
-            selectedAiConfig: '',
+            selectedAiConfig: 'round-robin',
             customInstructions: '',
             result: '',
             generating: false,

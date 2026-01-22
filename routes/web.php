@@ -27,6 +27,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/saved', [FeedController::class, 'saved'])->name('saved');
     Route::get('/favorites', [FeedController::class, 'favorites'])->name('favorites');
     Route::get('/folder/{folder}', [FeedController::class, 'folder'])->name('folder.show');
+    Route::post('/folder/{folder}/mark-all-read', [FeedController::class, 'markAllReadFolder'])->name('folders.mark-all-read');
     Route::get('/feed/{feed}', [FeedController::class, 'feed'])->name('feed.show');
     Route::post('/feed/{feed}/check', [FeedController::class, 'check'])->name('feed.check');
     Route::post('/feed/{feed}/diagnose', [FeedController::class, 'diagnose'])->name('feed.diagnose');

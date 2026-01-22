@@ -20,11 +20,26 @@
             </div>
             <div class="flex gap-2">
                 @if(isset($feed))
-                <form action="{{ route('feeds.refresh', $feed) }}" method="POST">
+                <form action="{{ route('feeds.refresh', $feed) }}" method="POST" class="inline">
                     @csrf
                     <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-primary-600 dark:hover:text-primary-400 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
                         <ion-icon name="refresh-outline"></ion-icon>
                         Refresh
+                    </button>
+                </form>
+                <form action="{{ route('feeds.mark-all-read', $feed) }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-green-600 dark:hover:text-green-400 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
+                        <ion-icon name="checkmark-done-outline"></ion-icon>
+                        Mark All Read
+                    </button>
+                </form>
+                @elseif(isset($folder))
+                <form action="{{ route('folders.mark-all-read', $folder) }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-green-600 dark:hover:text-green-400 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
+                        <ion-icon name="checkmark-done-outline"></ion-icon>
+                        Mark All Read
                     </button>
                 </form>
                 @endif
@@ -190,7 +205,7 @@
                 prompts: [],
                 aiConfigs: [],
                 selectedPrompt: 1,
-                selectedAiConfig: '',
+                selectedAiConfig: 'round-robin',
                 customInstructions: '',
                 result: '',
                 init() {
