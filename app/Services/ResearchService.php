@@ -160,7 +160,7 @@ EOT;
         throw new \Exception("Could not parse URLs from Perplexity response.");
     }
 
-    // ... (searchWeb, searchDuckDuckGo, searchGoogle, analyzeContent methods remain unchanged) ...
+
 
     protected function compileDraft(string $topic, array $findings): array
     {
@@ -261,6 +261,39 @@ EOT;
             
         } catch (\Exception $e) {
             \Log::error("DDG Search Failed: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    protected function searchGoogle(string $query, int $limit)
+    {
+        $url = 'https://www.google.com/search?q=' . urlencode($query);
+        
+        try {
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            ])->get($url);
+            
+            if (!$response->successful()) return [];
+            
+            $html = $response->body();
+            $crawler = new Crawler($html);
+            
+            $urls = [];
+            $crawler->filter('a')->each(function (Crawler $node) use (&$urls, $limit) {
+                if (count($urls) >= $limit) return;
+                $href = $node->attr('href');
+                if ($href && str_contains($href, '/url?q=')) {
+                     parse_str(parse_url($href, PHP_URL_QUERY), $matches);
+                     if (isset($matches['q']) && str_starts_with($matches['q'], 'http') && !str_contains($matches['q'], 'google.com')) {
+                         $urls[] = $matches['q'];
+                     }
+                }
+            });
+            
+            return array_unique($urls);
+        } catch (\Exception $e) {
+            \Log::error("Google Search Failed: " . $e->getMessage());
             return [];
         }
     }

@@ -130,10 +130,6 @@ class FeedController extends Controller
         
         // Efficiently sync/update pivot table for these articles
         auth()->user()->articles()->syncWithPivotValues($articles, ['is_read' => true], false);
-        
-        foreach ($articles as $articleId) {
-             auth()->user()->articles()->updateExistingPivot($articleId, ['is_read' => true]);
-        }
 
         return redirect()->route('feed.show', $feed)->with('success', 'All articles from ' . $feed->name . ' marked as read.');
     }
@@ -148,10 +144,6 @@ class FeedController extends Controller
         
         // Efficiently sync/update pivot table for these articles
         auth()->user()->articles()->syncWithPivotValues($articles, ['is_read' => true], false);
-        
-        foreach ($articles as $articleId) {
-             auth()->user()->articles()->updateExistingPivot($articleId, ['is_read' => true]);
-        }
 
         return redirect()->route('folder.show', $folder)->with('success', 'All articles in ' . $folder->name . ' marked as read.');
     }
