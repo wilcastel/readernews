@@ -6,6 +6,19 @@
                 <span class="hidden md:inline">Back</span>
             </a>
             
+<<<<<<< HEAD
+=======
+            @if($article->feed->user_id === auth()->id())
+            <form action="{{ route('articles.destroy', $article) }}" method="POST" onsubmit="return confirm('Delete this article/note permanently?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="text-surface-500 hover:text-red-500 transition-colors" title="Delete Article">
+                    <ion-icon name="trash-outline" class="text-lg"></ion-icon>
+                </button>
+            </form>
+            @endif
+
+>>>>>>> myNotesInvestigation
             <div class="flex items-center gap-1 bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5">
                 <a href="{{ $previous ? route('articles.show', ['article' => $previous->id, 'source' => $source ?? null, 'source_id' => $sourceId ?? null]) : '#' }}" 
                    class="p-1.5 rounded-md hover:bg-white dark:hover:bg-surface-700 transition-colors {{ !$previous ? 'opacity-50 pointer-events-none' : 'text-surface-700 dark:text-surface-200' }}"
@@ -206,7 +219,11 @@
                     prompts: [],
                     aiConfigs: [],
                     selectedPrompt: 1,
+<<<<<<< HEAD
                     selectedAiConfig: '',
+=======
+                    selectedAiConfig: 'round-robin',
+>>>>>>> myNotesInvestigation
                     customInstructions: '',
                     result: '',
                     init() {
@@ -438,7 +455,12 @@
             </div>
         </div>
 
+<<<<<<< HEAD
             <!-- Fetch Button (Always visible to allow upgrading content) -->
+=======
+            <!-- Fetch Button (Always visible to allow upgrading content, except for Research reports) -->
+            @if(!str_starts_with($article->url, 'research://'))
+>>>>>>> myNotesInvestigation
             <div class="mt-12 text-center py-8 border-t border-dashed border-surface-200">
                 <div class="mb-4 text-sm text-surface-500 font-medium" x-show="!hasContent">Viewing summary. Read the full story?</div>
                 <div class="mb-4 text-sm text-surface-500 font-medium" x-show="hasContent">Missing something? Try extracting the full article from source.</div>
@@ -486,6 +508,10 @@
                  </div>
                  @endif
             </div>
+<<<<<<< HEAD
+=======
+            @endif
+>>>>>>> myNotesInvestigation
 
         </div>
     </div>

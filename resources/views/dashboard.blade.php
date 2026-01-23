@@ -20,11 +20,26 @@
             </div>
             <div class="flex gap-2">
                 @if(isset($feed))
-                <form action="{{ route('feeds.refresh', $feed) }}" method="POST">
+                <form action="{{ route('feeds.refresh', $feed) }}" method="POST" class="inline">
                     @csrf
                     <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-primary-600 dark:hover:text-primary-400 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
                         <ion-icon name="refresh-outline"></ion-icon>
                         Refresh
+                    </button>
+                </form>
+                <form action="{{ route('feeds.mark-all-read', $feed) }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-green-600 dark:hover:text-green-400 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
+                        <ion-icon name="checkmark-done-outline"></ion-icon>
+                        Mark All Read
+                    </button>
+                </form>
+                @elseif(isset($folder))
+                <form action="{{ route('folders.mark-all-read', $folder) }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-green-600 dark:hover:text-green-400 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all">
+                        <ion-icon name="checkmark-done-outline"></ion-icon>
+                        Mark All Read
                     </button>
                 </form>
                 @endif
@@ -40,6 +55,45 @@
     <div x-data="{ 
         selected: [],
         showAiModal: false,
+        
+        // Article Modal State
+        showArticleModal: false,
+        activeArticle: null,
+        articleContent: '',
+        loadingArticle: false,
+
+        openArticle(article) {
+            this.activeArticle = article;
+            this.showArticleModal = true;
+            this.loadingArticle = true;
+            this.articleContent = '';
+            
+            // Focus for keyboard scrolling
+             this.$nextTick(() => {
+                if (this.$refs.modalContent) this.$refs.modalContent.focus(); 
+            });
+
+            // Mark as read immediately when opening
+            fetch('/articles/' + article.id + '/mark-read', { 
+                method: 'POST', 
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } 
+            });
+
+            // Fetch content
+            fetch('/articles/' + article.id + '/fetch-modal-content')
+                .then(r => r.text())
+                .then(html => {
+                    this.articleContent = html;
+                    this.loadingArticle = false;
+                     this.$nextTick(() => {
+                        if (this.$refs.modalContent) this.$refs.modalContent.focus(); 
+                    });
+                })
+                .catch(() => {
+                   this.articleContent = '<p class=\'text-red-500\'>Error loading content.</p>';
+                   this.loadingArticle = false;
+                });
+        },
         toggleSelection(id) {
             if (this.selected.includes(id)) {
                 this.selected = this.selected.filter(i => i !== id);
@@ -63,6 +117,7 @@
                 x-data="{ 
                     saved: {{ $isSaved ? 'true' : 'false' }}, 
                     read: {{ $isRead ? 'true' : 'false' }},
+                    allowDim: {{ (($context['source'] ?? '') !== 'saved' && (!isset($feed) || $feed->name !== 'Web Imports')) ? 'true' : 'false' }},
                     toggleSaved() {
                         this.saved = !this.saved;
                         fetch('/articles/{{ $article->id }}/toggle-saved', { 
@@ -78,7 +133,7 @@
                         });
                     }
                 }"
-                :class="{'opacity-60 grayscale': read, 'ring-2 ring-primary-500 bg-primary-50 dark:bg-surface-800': selected.includes('{{ $article->id }}') || selected.includes({{ $article->id }})}"
+                :class="{'opacity-60 grayscale': read && allowDim, 'ring-2 ring-primary-500 bg-primary-50 dark:bg-surface-800': selected.includes('{{ $article->id }}') || selected.includes({{ $article->id }})}"
                 class="bg-white dark:bg-surface-900 rounded-xl shadow-sm border border-surface-200 dark:border-surface-800 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer h-full flex flex-col relative">
                 
                 <!-- Selection Checkbox -->
@@ -100,7 +155,7 @@
                         <span class="text-xs text-surface-400">• {{ $article->published_at?->diffForHumans() ?? 'Recently' }}</span>
                     </div>
                     <h2 class="text-xl font-bold font-serif mb-3 text-surface-900 dark:text-white leading-tight group-hover:text-primary-600 transition-colors">
-                        <a href="{{ route('articles.show', ['article' => $article->id, 'source' => isset($context) ? $context['source'] : 'dashboard', 'source_id' => isset($context) ? $context['id'] : null]) }}" @click="markRead()">{{ $article->title }}</a>
+                        <a href="#" @click.prevent="openArticle({{ $article }}); read=true">{{ $article->title }}</a>
                     </h2>
                     
                     <!-- Tags on Card -->
@@ -127,6 +182,16 @@
                                 title="Save">
                             <ion-icon :name="saved ? 'bookmark' : 'bookmark-outline'" class="text-xl"></ion-icon>
                         </button>
+
+                        @if($article->feed->user_id === auth()->id())
+                        <form action="{{ route('articles.destroy', $article) }}" method="POST" class="inline-flex" onsubmit="return confirm('Delete this article?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" @click.stop class="text-surface-400 hover:text-red-500 transition-colors" title="Delete">
+                                <ion-icon name="trash-outline" class="text-xl"></ion-icon>
+                            </button>
+                        </form>
+                        @endif
                         <button @click.stop="markRead()" 
                                 class="transition-colors"
                                 :class="read ? 'text-green-500' : 'text-surface-400 hover:text-green-500'" 
@@ -156,6 +221,36 @@
             @endforelse
         </div>
 
+        <!-- Bottom Actions (Mark All Read) -->
+        @if($articles->count() > 0 && (isset($feed) || isset($folder)))
+        <div class="mt-10 mb-20 flex justify-center">
+            @if(isset($feed))
+            <form action="{{ route('feeds.mark-all-read', $feed) }}" method="POST">
+                @csrf
+                <button type="submit" class="cursor-pointer group relative px-8 py-3 rounded-xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-300 hover:text-green-600 dark:hover:text-green-400 hover:border-green-500 font-semibold shadow-sm hover:shadow-lg transition-all transform hover:-translate-y-0.5">
+                    <span class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-surface-100 dark:bg-green-900/20 group-hover:bg-green-100 dark:group-hover:bg-green-900/40 flex items-center justify-center transition-colors">
+                             <ion-icon name="checkmark-done-outline" class="text-xl"></ion-icon>
+                        </div>
+                        Mark All as Read
+                    </span>
+                </button>
+            </form>
+            @elseif(isset($folder))
+            <form action="{{ route('folders.mark-all-read', $folder) }}" method="POST">
+                @csrf
+                <button type="submit" class="cursor-pointer group relative px-8 py-3 rounded-xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-300 hover:text-green-600 dark:hover:text-green-400 hover:border-green-500 font-semibold shadow-sm hover:shadow-lg transition-all transform hover:-translate-y-0.5">
+                     <span class="flex items-center gap-3">
+                         <div class="w-8 h-8 rounded-full bg-surface-100 dark:bg-green-900/20 group-hover:bg-green-100 dark:group-hover:bg-green-900/40 flex items-center justify-center transition-colors">
+                             <ion-icon name="checkmark-done-outline" class="text-xl"></ion-icon>
+                        </div>
+                        Mark All as Read
+                    </span>
+                </button>
+            </form>
+            @endif
+        </div>
+        @endif
         <!-- Floating Bulk Actions Bar -->
         <div x-show="hasSelection()" 
              x-transition:enter="transition ease-out duration-300"
@@ -190,7 +285,7 @@
                 prompts: [],
                 aiConfigs: [],
                 selectedPrompt: 1,
-                selectedAiConfig: '',
+                selectedAiConfig: 'round-robin',
                 customInstructions: '',
                 result: '',
                 init() {
@@ -312,5 +407,45 @@
             </div>
         </div>
 
+        <!-- Article Reading Modal -->
+        <div x-show="showArticleModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" style="display: none;" 
+             @keydown.escape.window="showArticleModal = false">
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" @click="showArticleModal = false"></div>
+            
+            <div class="relative bg-white dark:bg-surface-900 rounded-xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[85vh] border border-surface-200 dark:border-surface-700">
+                <!-- Modal Header -->
+                <div class="flex-none p-4 border-b border-surface-200 dark:border-surface-700 flex justify-between items-center bg-surface-50 dark:bg-surface-950 z-10">
+                    <div class="flex items-center gap-2 max-w-[80%]">
+                        <template x-if="activeArticle && activeArticle.feed && activeArticle.feed.favicon">
+                             <img :src="activeArticle.feed.favicon" class="w-5 h-5 rounded-sm" alt="Icon">
+                        </template>
+                        <h3 class="font-bold text-lg dark:text-white truncate" x-text="activeArticle ? activeArticle.title : 'Article'"></h3>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a x-show="activeArticle" :href="'/articles/' + activeArticle?.id" class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200" title="Open Full Page">
+                            <ion-icon name="open-outline" class="text-xl"></ion-icon>
+                        </a>
+                        <button @click="showArticleModal = false" class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200">
+                            <ion-icon name="close" class="text-xl"></ion-icon>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Content -->
+                <div class="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-surface-900 overscroll-contain focus:outline-none" x-ref="modalContent" tabindex="0">
+                    <!-- Loading State -->
+                    <div x-show="loadingArticle" class="flex flex-col items-center justify-center py-20">
+                        <div class="animate-spin rounded-full h-10 w-10 border-4 border-surface-100 border-t-primary-600 mb-4"></div>
+                        <p class="text-surface-500">Loading Article...</p>
+                    </div>
+
+                    <!-- Content Rendering -->
+                    <div x-show="!loadingArticle" class="w-full">
+                         <!-- Injected HTML Content from Server -->
+                         <div x-html="articleContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </x-layout>

@@ -230,4 +230,42 @@ class ArticleController extends Controller
         
         return response()->json(['success' => true]);
     }
+    public function destroy(Article $article)
+    {
+        // ... (existing destroy logic) ...
+        $user = auth()->user();
+        
+        if ($article->feed->user_id !== $user->id) {
+             abort(403, 'You can only delete articles from your personal feeds.');
+        }
+
+        // Determine destination before delete
+        $redirectUrl = route('dashboard');
+        $previousUrl = url()->previous();
+        
+        // If we are deleting from a list view (dashboard, feed, folder), go back there.
+        // If we are deleting from the detail view, fallback to the feed page.
+        if ($previousUrl && !str_contains($previousUrl, '/articles/' . $article->id)) {
+            $redirectUrl = $previousUrl;
+        } else {
+             $redirectUrl = route('feed.show', $article->feed_id);
+        }
+
+        $article->delete();
+
+        return redirect($redirectUrl)->with('success', 'Article deleted.');
+    }
+
+    public function fetchModalContent(Article $article)
+    {
+        // Reuse the logic from show() to get context if needed, 
+        // but for a modal we mainly need the article and its relationships.
+        $article->load(['feed', 'users' => function($q) {
+            $q->where('user_id', auth()->id());
+        }]);
+
+        // We return a blade view that only contains the content part of the article page
+        // We will create 'articles.modal-content' for this.
+        return view('articles.modal-content', compact('article'));
+    }
 }

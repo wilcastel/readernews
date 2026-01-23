@@ -6,6 +6,7 @@ use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\ResearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -21,18 +22,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/articles/{article}/notes', [\App\Http\Controllers\NoteController::class, 'store'])->name('notes.store');
     Route::delete('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'destroy'])->name('notes.destroy');
     
+    // Research
+    Route::get('/research', [ResearchController::class, 'index'])->name('research.index');
+    Route::post('/research', [ResearchController::class, 'store'])->name('research.store');
+    
     // Content Generation
     Route::post('/generate-content', [\App\Http\Controllers\ContentGenerationController::class, 'generate'])->name('ai.generate');
 
     Route::get('/saved', [FeedController::class, 'saved'])->name('saved');
     Route::get('/favorites', [FeedController::class, 'favorites'])->name('favorites');
     Route::get('/folder/{folder}', [FeedController::class, 'folder'])->name('folder.show');
+    Route::post('/folder/{folder}/mark-all-read', [FeedController::class, 'markAllReadFolder'])->name('folders.mark-all-read');
     Route::get('/feed/{feed}', [FeedController::class, 'feed'])->name('feed.show');
     Route::post('/feed/{feed}/check', [FeedController::class, 'check'])->name('feed.check');
     Route::post('/feed/{feed}/diagnose', [FeedController::class, 'diagnose'])->name('feed.diagnose');
     
     // YouTube Import
     Route::post('/youtube/import', [\App\Http\Controllers\YouTubeImportController::class, 'store'])->name('youtube.import');
+    Route::post('/web/import', [\App\Http\Controllers\WebImportController::class, 'store'])->name('web.import');
     Route::post('/articles/{article}/summarize', [\App\Http\Controllers\YouTubeImportController::class, 'summarize'])->name('articles.summarize');
 
     Route::post('/feeds', [FeedController::class, 'store'])->name('feeds.store');
@@ -62,6 +69,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/articles/{article}/toggle-saved', [ArticleController::class, 'toggleSaved'])->name('articles.toggle-saved');
     Route::post('/articles/{article}/toggle-favorite', [ArticleController::class, 'toggleFavorite'])->name('articles.toggle-favorite');
     Route::post('/articles/{article}/mark-read', [ArticleController::class, 'markRead'])->name('articles.mark-read');
+    Route::delete('/articles/{article}', [ArticleController::class, 'destroy'])->name('articles.destroy'); // Add Delete Route
+    Route::get('/articles/{article}/fetch-modal-content', [ArticleController::class, 'fetchModalContent'])->name('articles.fetch-modal');
     
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.store');
     Route::delete('/folders/{folder}', [FolderController::class, 'destroy'])->name('folders.destroy');
