@@ -49,8 +49,6 @@ class OllamaService
 
     public function extractArticlesFromHtml(string $html, ?string $selector = null): array
     {
-<<<<<<< HEAD
-=======
         // SMART FALLBACK: If we are using default Ollama (local) but have Remote Configs active in DB,
         // switch to one of them to ensure this works on Remote Servers where localhost:11434 is missing.
         if ($this->provider === 'ollama' || $this->baseUrl === 'http://localhost:11434') {
@@ -65,8 +63,6 @@ class OllamaService
                  $this->useConfig($remoteConfig);
              }
         }
-
->>>>>>> myNotesInvestigation
         // 1. Clean HTML to reduce token usage
         $cleanHtml = $this->cleanHtmlForContext($html, $selector);
 
@@ -89,12 +85,8 @@ EOT;
         try {
             $responseText = '';
 
-<<<<<<< HEAD
-            if ($this->provider === 'openrouter' || $this->provider === 'openai') {
-=======
             // Check provider again after potential swap
             if ($this->provider === 'openrouter' || $this->provider === 'openai' || $this->provider === 'groq' || $this->provider === 'cerebras') {
->>>>>>> myNotesInvestigation
                 $responseText = $this->askOpenAICompatible($prompt);
             } else {
                 $responseText = $this->askOllamaBridge($prompt);
@@ -110,9 +102,6 @@ EOT;
         }
     }
 
-<<<<<<< HEAD
-
-=======
     // Helper to switch context dynamically
     protected function useConfig(\App\Models\AiConfig $config)
     {
@@ -127,7 +116,6 @@ EOT;
              $this->provider = 'openai';
         }
     }
->>>>>>> myNotesInvestigation
 
     public function generateText(string $prompt, ?\App\Models\AiConfig $config = null): string
     {
@@ -148,14 +136,11 @@ EOT;
                 if ($provider === 'openrouter') $baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
                 // Add more defaults if needed, e.g. OpenAI official
             }
-<<<<<<< HEAD
-=======
             
             // Normalize for dispatch
              if (!in_array($provider, ['ollama', 'openrouter', 'openai'])) {
                  $provider = 'openai';
             }
->>>>>>> myNotesInvestigation
         }
 
         // 2. Dispatch
@@ -168,11 +153,7 @@ EOT;
             // For now, assume common Ollama bridge handles 'model'. 
             // Note: The bridge script currently hardcodes localhost:11434 usually unless passed.
             // Let's pass the URL to the bridge if supported, or just model.
-<<<<<<< HEAD
-            return $this->askOllamaBridge($prompt, $model, $baseUrl); 
-=======
-            return $this->askOllamaBridge($prompt, $model, $baseUrl ?? ''); 
->>>>>>> myNotesInvestigation
+            return $this->askOllamaBridge($prompt, $model, $baseUrl ?? '');
         }
     }
 

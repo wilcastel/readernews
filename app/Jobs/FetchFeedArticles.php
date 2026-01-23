@@ -24,14 +24,6 @@ class FetchFeedArticles implements ShouldQueue
 
     public function handle(OllamaService $ollama): void
     {
-<<<<<<< HEAD
-        if (!$this->feed->is_rss) {
-            $this->scrapeWithAi($ollama);
-            return;
-        }
-
-        $this->fetchRss();
-=======
         try {
             $feedInfo = "=== Processing Feed: {$this->feed->name} (ID: {$this->feed->id}) ===";
             echo "\n" . $feedInfo . "\n";
@@ -61,18 +53,13 @@ class FetchFeedArticles implements ShouldQueue
             \Log::error($errorMsg);
             throw $e;
         }
->>>>>>> myNotesInvestigation
     }
 
     protected function scrapeWithAi(OllamaService $ollama): void
     {
-<<<<<<< HEAD
-        \Log::info("Starting AI scrape for feed: " . $this->feed->name);
-=======
         $startMsg = "🤖 Starting AI scrape for feed: " . $this->feed->name;
         echo $startMsg . "\n";
         \Log::info($startMsg);
->>>>>>> myNotesInvestigation
         
         try {
             \Log::info("Fetching via Browsershot: " . $this->feed->url);
@@ -94,13 +81,9 @@ class FetchFeedArticles implements ShouldQueue
             ])->get($this->feed->url);
             
             if ($response->failed()) {
-<<<<<<< HEAD
-                 \Log::error("Failed to fetch HTML for AI scraping (HTTP fallback): " . $this->feed->url);
-=======
                  $errMsg = "❌ Failed to fetch HTML for feed '{$this->feed->name}': " . $this->feed->url;
                  echo $errMsg . "\n";
                  \Log::error($errMsg);
->>>>>>> myNotesInvestigation
                  return;
             }
             $html = $response->body();
@@ -208,22 +191,16 @@ class FetchFeedArticles implements ShouldQueue
             }
         }
         
-<<<<<<< HEAD
-        \Log::info("Job Finished for feed {$this->feed->name}: {$newCount} created, {$skipCount} duplicate/skipped.");
-=======
         \Log::info("✅ AI Scrape Finished for feed '{$this->feed->name}': {$newCount} created, {$skipCount} duplicate/skipped.");
         
         $finishMsg = "✅ AI Scrape Finished for feed '{$this->feed->name}': {$newCount} created, {$skipCount} duplicate/skipped.";
         echo $finishMsg . "\n";
->>>>>>> myNotesInvestigation
 
         $this->feed->update(['last_scraped_at' => now()]);
     }
 
     protected function fetchRss(): void
     {
-<<<<<<< HEAD
-=======
         $startTime = microtime(true);
         $newArticles = 0;
         $skippedArticles = 0;
@@ -232,7 +209,7 @@ class FetchFeedArticles implements ShouldQueue
         echo $rssMsg . "\n";
         \Log::info($rssMsg);
         
->>>>>>> myNotesInvestigation
+
         // 1. Try Standard SimplePie Fetch first
         $pie = new SimplePie();
         $pie->set_feed_url($this->feed->url);
@@ -308,14 +285,10 @@ class FetchFeedArticles implements ShouldQueue
         foreach ($items as $item) {
             $url = $item->get_permalink();
             
-<<<<<<< HEAD
-            if (Article::where('url', $url)->where('feed_id', $this->feed->id)->exists()) continue;
-=======
             if (Article::where('url', $url)->where('feed_id', $this->feed->id)->exists()) {
                 $skippedArticles++;
                 continue;
             }
->>>>>>> myNotesInvestigation
 
             $image = null;
             
@@ -352,10 +325,6 @@ class FetchFeedArticles implements ShouldQueue
                 'content' => $item->get_content(),
                 'published_at' => $publishedAt,
             ]);
-<<<<<<< HEAD
-        }
-        
-=======
             $newArticles++;
         }
         
@@ -363,8 +332,6 @@ class FetchFeedArticles implements ShouldQueue
         $finishMsg = "✅ RSS Feed '{$this->feed->name}' finished: {$newArticles} articles added, {$skippedArticles} duplicates skipped. ({$elapsedTime}ms)";
         echo $finishMsg . "\n";
         \Log::info($finishMsg);
-
->>>>>>> myNotesInvestigation
         $this->feed->update(['last_scraped_at' => now()]);
     }
 }

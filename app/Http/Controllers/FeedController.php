@@ -86,11 +86,7 @@ class FeedController extends Controller
             ->simplePaginate(30);
             
         $context = ['source' => 'folder', 'id' => $folder->id];
-<<<<<<< HEAD
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context'));
-=======
         return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context', 'folder'));
->>>>>>> myNotesInvestigation
     }
 
     public function feed(Feed $feed)
@@ -117,9 +113,6 @@ class FeedController extends Controller
         
         \App\Jobs\FetchFeedArticles::dispatch($feed);
         
-<<<<<<< HEAD
-        return back()->with('success', 'Refreshing ' . $feed->name . '...');
-=======
         // Determine where to redirect based on the referer
         $referer = request()->headers->get('referer');
         if ($referer && str_contains($referer, '/feed/')) {
@@ -127,7 +120,6 @@ class FeedController extends Controller
         }
         
         return redirect()->route('dashboard')->with('success', 'Refreshing ' . $feed->name . '...');
->>>>>>> myNotesInvestigation
     }
 
     public function markAllRead(Feed $feed)
@@ -143,9 +135,6 @@ class FeedController extends Controller
              auth()->user()->articles()->updateExistingPivot($articleId, ['is_read' => true]);
         }
 
-<<<<<<< HEAD
-        return back()->with('success', 'All articles from ' . $feed->name . ' marked as read.');
-=======
         return redirect()->route('feed.show', $feed)->with('success', 'All articles from ' . $feed->name . ' marked as read.');
     }
 
@@ -165,7 +154,6 @@ class FeedController extends Controller
         }
 
         return redirect()->route('folder.show', $folder)->with('success', 'All articles in ' . $folder->name . ' marked as read.');
->>>>>>> myNotesInvestigation
     }
 
     public function manage()
@@ -204,11 +192,7 @@ class FeedController extends Controller
             \App\Jobs\FetchFeedArticles::dispatch($feed);
         }
         
-<<<<<<< HEAD
-        return back()->with('success', 'Refreshing all ' . $feeds->count() . ' feeds...');
-=======
         return redirect()->route('dashboard')->with('success', 'Refreshing all ' . $feeds->count() . ' feeds...');
->>>>>>> myNotesInvestigation
     }
 
     public function store(\Illuminate\Http\Request $request, \App\Services\FeedDiscoveryService $discovery)

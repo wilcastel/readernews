@@ -11,19 +11,12 @@
             notes: [],
             selected: [],
             loading: true,
-<<<<<<< HEAD
-=======
             openImportModal: false,
->>>>>>> myNotesInvestigation
             showAiModal: false,
             prompts: [],
             aiConfigs: [],
             selectedPrompt: 1,
-<<<<<<< HEAD
-            selectedAiConfig: '',
-=======
             selectedAiConfig: 'round-robin',
->>>>>>> myNotesInvestigation
             customInstructions: '',
             result: '',
             generating: false,
@@ -109,15 +102,9 @@
         }" 
         class="flex flex-col flex-1 min-h-0 relative">
 
-<<<<<<< HEAD
-            <!-- Search Bar -->
-            <div class="mb-6 flex-shrink-0">
-                <div class="relative max-w-lg">
-=======
              <!-- Search Bar & Actions -->
             <div class="mb-6 flex-shrink-0 flex items-center gap-4">
                 <div class="relative max-w-lg flex-1">
->>>>>>> myNotesInvestigation
                     <ion-icon name="filter-outline" class="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"></ion-icon>
                     <input type="text" 
                         x-model="query" 
@@ -125,13 +112,10 @@
                         placeholder="Filter by quote, tag, or note..." 
                         class="w-full pl-10 pr-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all shadow-sm">
                 </div>
-<<<<<<< HEAD
-=======
                 <button @click="openImportModal = true" class="bg-surface-900 dark:bg-white text-white dark:text-surface-900 px-4 py-3 rounded-xl font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-sm whitespace-nowrap">
                     <ion-icon name="add-circle-outline" class="text-xl"></ion-icon>
                     Add Article
                 </button>
->>>>>>> myNotesInvestigation
             </div>
 
             <!-- Notes Grid (Scrollable) -->
@@ -299,8 +283,6 @@
                 </div>
             </div>
 
-<<<<<<< HEAD
-=======
             <!-- Web Import Modal -->
             <div x-show="openImportModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display: none;">
                 <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="openImportModal = false"></div>
@@ -338,8 +320,6 @@
                     </form>
                 </div>
             </div>
-
->>>>>>> myNotesInvestigation
         </div>
 
 

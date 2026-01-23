@@ -56,9 +56,5 @@ Ve a **Settings (Configuración)** en el menú superior derecho:
 
 ### Perfil
 En **Profile**, puedes cambiar tu contraseña, nombre y preferencias de cuenta.
-<<<<<<< HEAD
-=======
-
 ### Actualizar feeds
 Para actualizar los feeds hay que correr php artisan queue:work
->>>>>>> myNotesInvestigation
