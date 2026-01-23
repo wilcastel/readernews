@@ -235,7 +235,7 @@ EOT;
             ]);
 
         if ($response->failed()) {
-            \Log::error('AI API Failed: ' . $response->body());
+            \Log::error('AI API Failed (' . $response->status() . '): ' . $response->body());
             return '';
         }
 
