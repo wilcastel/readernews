@@ -154,7 +154,7 @@ EOT;
             // For now, assume common Ollama bridge handles 'model'. 
             // Note: The bridge script currently hardcodes localhost:11434 usually unless passed.
             // Let's pass the URL to the bridge if supported, or just model.
-            return $this->askOllamaBridge($prompt, $model, $baseUrl); 
+            return $this->askOllamaBridge($prompt, $model, $baseUrl ?? ''); 
         }
     }
 

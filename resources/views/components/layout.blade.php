@@ -188,6 +188,12 @@
                             My Notes
                         </div>
                     </a>
+                    <a href="{{ route('research.index') }}" class="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg {{ request()->routeIs('research.index') ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' }}">
+                        <div class="flex items-center gap-3">
+                            <ion-icon name="flask-outline" class="text-lg"></ion-icon>
+                            AI Researcher
+                        </div>
+                    </a>
                 </div>
             </div>
 

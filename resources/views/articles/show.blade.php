@@ -448,7 +448,8 @@
             </div>
         </div>
 
-            <!-- Fetch Button (Always visible to allow upgrading content) -->
+            <!-- Fetch Button (Always visible to allow upgrading content, except for Research reports) -->
+            @if(!str_starts_with($article->url, 'research://'))
             <div class="mt-12 text-center py-8 border-t border-dashed border-surface-200">
                 <div class="mb-4 text-sm text-surface-500 font-medium" x-show="!hasContent">Viewing summary. Read the full story?</div>
                 <div class="mb-4 text-sm text-surface-500 font-medium" x-show="hasContent">Missing something? Try extracting the full article from source.</div>
@@ -496,6 +497,7 @@
                  </div>
                  @endif
             </div>
+            @endif
 
         </div>
     </div>

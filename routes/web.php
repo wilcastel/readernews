@@ -6,6 +6,7 @@ use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\ResearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -20,6 +21,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/notes', [\App\Http\Controllers\NoteController::class, 'index'])->name('notes.index');
     Route::post('/articles/{article}/notes', [\App\Http\Controllers\NoteController::class, 'store'])->name('notes.store');
     Route::delete('/notes/{note}', [\App\Http\Controllers\NoteController::class, 'destroy'])->name('notes.destroy');
+    
+    // Research
+    Route::get('/research', [ResearchController::class, 'index'])->name('research.index');
+    Route::post('/research', [ResearchController::class, 'store'])->name('research.store');
     
     // Content Generation
     Route::post('/generate-content', [\App\Http\Controllers\ContentGenerationController::class, 'generate'])->name('ai.generate');

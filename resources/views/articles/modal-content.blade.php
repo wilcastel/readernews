@@ -276,6 +276,7 @@
         </div>
 
         <!-- Fetch Button -->
+        @if(!str_starts_with($article->url, 'research://'))
         <div class="mt-12 text-center py-8 border-t border-dashed border-surface-200">
             <div class="mb-4 text-sm text-surface-500 font-medium" x-show="!hasContent">Viewing summary. Read the full story?</div>
              <button @click="fetchContent()" :disabled="fetching" 
@@ -290,6 +291,7 @@
                 <span x-text="fetching ? 'Extracting Content...' : (hasContent ? 'Re-Extract Full Content' : '{{ $isYoutube ? 'Load Transcript & Summary' : 'Load Full Article' }}')"></span>
             </button>
         </div>
+        @endif
     </div>
 </div>
 
