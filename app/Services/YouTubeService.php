@@ -49,8 +49,9 @@ class YouTubeService
     {
         $scriptPath = base_path('scripts/fetch_transcript.py');
         
-        $venvPath = '/home/wilcastell-reader/venv/bin/python';
-        $pythonCmd = file_exists($venvPath) ? $venvPath : (PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3');
+        /*$venvPath = '/home/wilcastell-reader/venv/bin/python';
+        $pythonCmd = file_exists($venvPath) ? $venvPath : (PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3');*/
+        $pythonCmd = 'python3';
         
         $process = new Process([$pythonCmd, $scriptPath, $videoId]);
         $process->setTimeout(120);

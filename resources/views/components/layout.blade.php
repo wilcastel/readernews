@@ -27,7 +27,6 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="h-full font-sans antialiased text-surface-900 dark:text-surface-100 dark:bg-surface-950 flex overflow-hidden"
       x-data="{ 
