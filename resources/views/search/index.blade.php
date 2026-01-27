@@ -1,4 +1,11 @@
 <x-layout title="Search Results">
+    <x-slot name="contextActions">
+        <button @click="openAddModal = true" class="cursor-pointer bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2 transition-all">
+            <ion-icon name="add-outline"></ion-icon>
+            <span class="hidden lg:inline">Add Source</span>
+            <span class="lg:hidden">Add</span>
+        </button>
+    </x-slot>
     <div class="mb-8">
         <h1 class="text-3xl font-bold font-serif text-surface-900 dark:text-white mb-2">
             Search: "{{ $query }}"

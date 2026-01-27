@@ -425,6 +425,12 @@
                         <input type="text" name="q" placeholder="Search articles..." value="{{ request('q') }}" class="w-full pl-10 pr-4 py-2 rounded-full border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all">
                     </form>
                 </div>
+
+                @if(isset($contextActions))
+                    <div class="hidden md:flex items-center gap-2">
+                        {{ $contextActions }}
+                    </div>
+                @endif
             </div>
             <div class="flex items-center gap-3">
                 <button class="p-2 rounded-full hover:bg-surface-100 text-surface-500 transition-colors"
