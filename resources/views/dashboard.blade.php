@@ -14,16 +14,9 @@
 
     <x-slot name="contextActions">
         @if(isset($feed))
-            <form action="{{ route('feeds.refresh', $feed) }}" method="POST" class="inline">
-                @csrf
-                <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-primary-600 dark:hover:text-primary-400 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
-                    <ion-icon name="refresh-outline"></ion-icon>
-                    <span class="hidden lg:inline">Refresh</span>
-                </button>
-            </form>
             <form action="{{ route('feeds.mark-all-read', $feed) }}" method="POST" class="inline">
                 @csrf
-                <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-green-600 dark:hover:text-green-400 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
+                <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-orange-600 dark:hover:text-orange-400 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
                     <ion-icon name="checkmark-done-outline"></ion-icon>
                     <span class="hidden lg:inline">Mark All Read</span>
                     <span class="lg:hidden">Mark Read</span>
@@ -32,17 +25,16 @@
         @elseif(isset($folder))
             <form action="{{ route('folders.mark-all-read', $folder) }}" method="POST" class="inline">
                 @csrf
-                <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-green-600 dark:hover:text-green-400 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
+                <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-orange-600 dark:hover:text-orange-400 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
                     <ion-icon name="checkmark-done-outline"></ion-icon>
                     <span class="hidden lg:inline">Mark All Read</span>
                     <span class="lg:hidden">Mark Read</span>
                 </button>
             </form>
         @endif
-        <button @click="openAddModal = true" class="cursor-pointer bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-lg shadow-primary-500/30 flex items-center gap-2 transition-all">
+        <button @click="openAddModal = true" class="cursor-pointer bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-lg shadow-primary-500/30 flex items-center gap-2 transition-all">
             <ion-icon name="add-outline"></ion-icon>
-            <span class="hidden lg:inline">Add Source</span>
-            <span class="lg:hidden">Add</span>
+            <span>+</span>
         </button>
     </x-slot>
 
