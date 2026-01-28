@@ -191,6 +191,26 @@ class ArticleController extends Controller
         return response()->json(['success' => true, 'is_saved' => $newState]);
     }
 
+    public function bulkUnsave(\Illuminate\Http\Request $request)
+    {
+        $request->validate(['ids' => 'required|array']);
+        
+        auth()->user()->articles()
+            ->whereIn('article_id', $request->ids)
+            ->update(['article_user.is_saved' => false]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function unsaveAll()
+    {
+        auth()->user()->articles()
+            ->wherePivot('is_saved', true)
+            ->update(['article_user.is_saved' => false]);
+
+        return redirect()->back()->with('success', 'All articles removed from Saved list.');
+    }
+
     public function toggleFavorite(Article $article)
     {
         $user = auth()->user();

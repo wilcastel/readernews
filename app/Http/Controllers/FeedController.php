@@ -142,6 +142,38 @@ class FeedController extends Controller
         return redirect()->route('feed.show', $feed)->with('success', 'All articles from ' . $feed->name . ' marked as read.');
     }
 
+    public function clear(Feed $feed)
+    {
+        abort_if($feed->user_id !== auth()->id(), 403);
+
+        $articlesToKeep = Article::where('feed_id', $feed->id)
+            ->whereHas('users', function($q) {
+                $q->where('user_id', auth()->id())
+                  ->where(function($sq) {
+                      $sq->where('is_saved', true)->orWhere('is_favorite', true);
+                  });
+            })
+            ->pluck('id');
+
+        Article::where('feed_id', $feed->id)
+            ->whereNotIn('id', $articlesToKeep)
+            ->delete();
+
+        return redirect()->route('feed.show', $feed)->with('success', 'Feed cleared (except saved/favorites).');
+    }
+
+    public function markAllReadGlobal()
+    {
+        // Get all articles from all feeds of this user
+        $articles = Article::whereHas('feed', fn($q) => $q->where('user_id', auth()->id()))
+            ->pluck('id');
+        
+        // Efficiently sync/update pivot table for these articles
+        auth()->user()->articles()->syncWithPivotValues($articles, ['is_read' => true], false);
+
+        return redirect()->route('dashboard')->with('success', 'All articles marked as read.');
+    }
+
     public function markAllReadFolder(Folder $folder)
     {
         abort_if($folder->user_id !== auth()->id(), 403);

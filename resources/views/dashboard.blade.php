@@ -24,6 +24,14 @@
                 </button>
             </form>
 
+            <form action="{{ route('feeds.clear', $feed) }}" method="POST" class="inline" onsubmit="return confirm('¿Vaciar permanentemente este feed? (Se conservarán guardados y favoritos)');">
+                @csrf
+                <button type="submit" class="cursor-pointer border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all" title="Vaciar Feed">
+                    <ion-icon name="trash-outline"></ion-icon>
+                    <span class="hidden lg:inline">Vaciar</span>
+                </button>
+            </form>
+
             @if(isset($nextFeed))
                 <a href="{{ route('feed.show', $nextFeed) }}" 
                    title="Skip to next: {{ $nextFeed->name }}"
@@ -33,6 +41,33 @@
             @endif
         @elseif(isset($folder))
             <form action="{{ route('folders.mark-all-read', $folder) }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-orange-600 dark:hover:text-orange-400 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
+                    <ion-icon name="checkmark-done-outline"></ion-icon>
+                    <span class="hidden lg:inline">Mark All Read</span>
+                    <span class="lg:hidden">Mark Read</span>
+                </button>
+            </form>
+
+            <form action="{{ route('folders.clear', $folder) }}" method="POST" class="inline" onsubmit="return confirm('¿Vaciar permanentemente esta carpeta? (Se conservarán guardados y favoritos)');">
+                @csrf
+                <button type="submit" class="cursor-pointer border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all" title="Vaciar Carpeta">
+                    <ion-icon name="trash-outline"></ion-icon>
+                    <span class="hidden lg:inline">Vaciar Todo</span>
+                    <span class="lg:hidden">Vaciar</span>
+                </button>
+            </form>
+        @elseif(($context['source'] ?? '') === 'saved')
+            <form action="{{ route('articles.unsave-all') }}" method="POST" class="inline" onsubmit="return confirm('¿Quitar TODOS los artículos de Guardados?');">
+                @csrf
+                <button type="submit" class="cursor-pointer border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all" title="Quitar todos de Guardados">
+                    <ion-icon name="trash-outline"></ion-icon>
+                    <span class="hidden lg:inline">Vaciar Guardados</span>
+                    <span class="lg:hidden">Vaciar</span>
+                </button>
+            </form>
+        @elseif(empty($context['source']) || ($context['source'] ?? '') === 'dashboard')
+            <form action="{{ route('articles.mark-all-read-global') }}" method="POST" class="inline">
                 @csrf
                 <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-orange-600 dark:hover:text-orange-400 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
                     <ion-icon name="checkmark-done-outline"></ion-icon>
@@ -103,8 +138,26 @@
             if (this.selected.includes(id)) {
                 this.selected = this.selected.filter(i => i !== id);
             } else {
-                this.selected.push(id);
+                this.selected.push(id.toString());
             }
+        },
+        bulkUnsave() {
+            if(!confirm('¿Quitar los artículos seleccionados de Guardados?')) return;
+            
+            fetch('{{ route('articles.bulk-unsave') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ ids: this.selected })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    window.location.reload();
+                }
+            });
         },
         hasSelection() { return this.selected.length > 0; }
     }">
@@ -275,6 +328,13 @@
                 <ion-icon name="sparkles" class="text-yellow-500 text-lg"></ion-icon>
                 AI Rewrite
             </button>
+            
+            @if(($context['source'] ?? '') === 'saved')
+            <button @click="bulkUnsave()" class="flex items-center gap-2 text-sm font-medium text-red-500 hover:text-red-600 transition-colors border-l border-surface-200 dark:border-surface-700 pl-4">
+                <ion-icon name="bookmark-outline" class="text-lg"></ion-icon>
+                Quitar de Guardados
+            </button>
+            @endif
             
             <!-- Other bulk actions could go here (Mark Read, Delete, etc) -->
             

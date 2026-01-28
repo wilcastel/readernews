@@ -30,6 +30,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/generate-content', [\App\Http\Controllers\ContentGenerationController::class, 'generate'])->name('ai.generate');
 
     Route::get('/saved', [FeedController::class, 'saved'])->name('saved');
+    Route::post('/articles/mark-all-read', [FeedController::class, 'markAllReadGlobal'])->name('articles.mark-all-read-global');
     Route::get('/favorites', [FeedController::class, 'favorites'])->name('favorites');
     Route::get('/folder/{folder}', [FeedController::class, 'folder'])->name('folder.show');
     Route::post('/folder/{folder}/mark-all-read', [FeedController::class, 'markAllReadFolder'])->name('folders.mark-all-read');
@@ -48,6 +49,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/feeds/{feed}/refresh', [FeedController::class, 'refresh'])->name('feeds.refresh');
     Route::delete('/feeds/{feed}', [FeedController::class, 'destroy'])->name('feeds.destroy');
     Route::post('/feeds/{feed}/mark-all-read', [FeedController::class, 'markAllRead'])->name('feeds.mark-all-read');
+    Route::post('/feeds/{feed}/clear', [FeedController::class, 'clear'])->name('feeds.clear');
+    Route::post('/folder/{folder}/clear', [FolderController::class, 'clearArticles'])->name('folders.clear');
     
     // Feed Management
     Route::get('/feeds/manage', [FeedController::class, 'manage'])->name('feeds.manage');
@@ -66,11 +69,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::get('/articles/{article}', [ArticleController::class, 'show'])->name('articles.show');
     Route::post('/articles/{article}/fetch', [ArticleController::class, 'fetchContent'])->name('articles.fetch');
+    // Article Actions
     Route::post('/articles/{article}/toggle-saved', [ArticleController::class, 'toggleSaved'])->name('articles.toggle-saved');
     Route::post('/articles/{article}/toggle-favorite', [ArticleController::class, 'toggleFavorite'])->name('articles.toggle-favorite');
     Route::post('/articles/{article}/mark-read', [ArticleController::class, 'markRead'])->name('articles.mark-read');
-    Route::delete('/articles/{article}', [ArticleController::class, 'destroy'])->name('articles.destroy'); // Add Delete Route
-    Route::get('/articles/{article}/fetch-modal-content', [ArticleController::class, 'fetchModalContent'])->name('articles.fetch-modal');
+    Route::post('/articles/bulk-unsave', [ArticleController::class, 'bulkUnsave'])->name('articles.bulk-unsave');
+    Route::post('/articles/unsave-all', [ArticleController::class, 'unsaveAll'])->name('articles.unsave-all');
+    Route::delete('/articles/{article}', [ArticleController::class, 'destroy'])->name('articles.destroy');
+    Route::get('/articles/{article}/fetch-modal-content', [ArticleController::class, 'fetchModalContent'])->name('articles.modal-content');
     
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.store');
     Route::delete('/folders/{folder}', [FolderController::class, 'destroy'])->name('folders.destroy');

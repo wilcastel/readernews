@@ -30,4 +30,26 @@ class FolderController extends Controller
 
         return back()->with('success', 'Folder deleted.');
     }
+
+    public function clearArticles(Folder $folder)
+    {
+        abort_if($folder->user_id !== auth()->id(), 403);
+
+        $feedIds = $folder->feeds->pluck('id');
+
+        $articlesToKeep = \App\Models\Article::whereIn('feed_id', $feedIds)
+            ->whereHas('users', function($q) {
+                $q->where('user_id', auth()->id())
+                  ->where(function($sq) {
+                      $sq->where('is_saved', true)->orWhere('is_favorite', true);
+                  });
+            })
+            ->pluck('id');
+
+        \App\Models\Article::whereIn('feed_id', $feedIds)
+            ->whereNotIn('id', $articlesToKeep)
+            ->delete();
+
+        return redirect()->route('folder.show', $folder)->with('success', 'Folder articles cleared (except saved/favorites).');
+    }
 }
