@@ -277,13 +277,17 @@
                             this.$watch('open', val => localStorage.setItem(this.key, val));
                         }
                     }">
-                        <div class="group flex items-center justify-between px-3 py-1.5 text-sm font-medium rounded-lg {{ request()->is('folder/'.$folder->id) ? 'text-primary-600 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400' }} hover:text-surface-900 dark:hover:text-white transition-colors cursor-pointer" @click="open = !open">
-                            <div class="flex items-center flex-1 gap-2 truncate">
-                                <ion-icon :name="open ? 'chevron-down' : 'chevron-forward'" class="text-xs transition-transform flex-shrink-0"></ion-icon>
-                                <span class="truncate">{{ $folder->name }}</span>
+                        <div class="group flex items-center justify-between px-1 text-sm font-medium rounded-lg {{ request()->routeIs('folder.show') && request()->route('folder')->id == $folder->id ? 'bg-primary-50 text-primary-700 dark:bg-surface-800 dark:text-primary-400' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800' }} transition-all">
+                            <div class="flex items-center flex-1 truncate">
+                                <button @click="open = !open" class="p-2 text-surface-400 hover:text-primary-600 transition-colors flex-shrink-0">
+                                    <ion-icon :name="open ? 'chevron-down' : 'chevron-forward'" class="text-xs"></ion-icon>
+                                </button>
+                                <a href="{{ route('folder.show', $folder) }}" class="flex-1 truncate py-1.5 pr-2" title="{{ $folder->name }}">
+                                    {{ $folder->name }}
+                                </a>
                             </div>
                             @if($folder->feeds->sum('articles_count') > 0)
-                                <span class="text-xs text-surface-400">{{ $folder->feeds->sum('articles_count') }}</span>
+                                <span class="text-[10px] font-semibold text-surface-400 px-2">{{ $folder->feeds->sum('articles_count') }}</span>
                             @endif
                         </div>
                         
