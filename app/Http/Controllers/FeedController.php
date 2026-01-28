@@ -103,8 +103,10 @@ class FeedController extends Controller
             ->latest('published_at')
             ->simplePaginate(30);
             
+        $nextFeed = $this->getNextFeed($feed);
         $context = ['source' => 'feed', 'id' => $feed->id];
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'feed', 'context'));
+        
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'feed', 'context', 'nextFeed'));
     }
 
     public function refresh(Feed $feed)
@@ -131,6 +133,12 @@ class FeedController extends Controller
         // Efficiently sync/update pivot table for these articles
         auth()->user()->articles()->syncWithPivotValues($articles, ['is_read' => true], false);
 
+        $nextFeed = $this->getNextFeed($feed);
+
+        if ($nextFeed) {
+            return redirect()->route('feed.show', $nextFeed)->with('success', 'Marked ' . $feed->name . ' as read. Moving to ' . $nextFeed->name);
+        }
+
         return redirect()->route('feed.show', $feed)->with('success', 'All articles from ' . $feed->name . ' marked as read.');
     }
 
@@ -145,7 +153,41 @@ class FeedController extends Controller
         // Efficiently sync/update pivot table for these articles
         auth()->user()->articles()->syncWithPivotValues($articles, ['is_read' => true], false);
 
+        // For folders, we could advance to the first feed of the NEXT folder, but maybe just staying is safer.
+        // Or if the user wants auto-flow, find the next item after the folder.
+        
         return redirect()->route('folder.show', $folder)->with('success', 'All articles in ' . $folder->name . ' marked as read.');
+    }
+
+    private function getNextFeed(Feed $currentFeed)
+    {
+        $user = auth()->user();
+        
+        // Get all feeds in the order they appear in the sidebar
+        $allFeeds = collect();
+        
+        // Load folders with feeds
+        $folders = $user->folders()->with('feeds')->get();
+        foreach ($folders as $folder) {
+            foreach ($folder->feeds as $feed) {
+                $allFeeds->push($feed);
+            }
+        }
+        
+        // Load uncategorized feeds
+        $uncategorized = $user->feeds()->whereNull('folder_id')->get();
+        foreach ($uncategorized as $feed) {
+            $allFeeds->push($feed);
+        }
+        
+        // Find current feed index
+        $currentIndex = $allFeeds->search(fn($f) => $f->id === $currentFeed->id);
+        
+        if ($currentIndex !== false && $currentIndex < $allFeeds->count() - 1) {
+            return $allFeeds->get($currentIndex + 1);
+        }
+        
+        return null;
     }
 
     public function manage()

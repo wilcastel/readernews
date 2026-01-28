@@ -379,6 +379,20 @@
                     </form>
                 </div>
 
+                <!-- Breadcrumb Title -->
+                @if(isset($pageTitle) && $pageTitle !== 'Unread Articles')
+                    <div class="flex items-center gap-1.5 px-2 lg:px-3 py-1 border-l border-surface-200 dark:border-surface-700 ml-1 min-w-0 flex-shrink">
+                        @if(isset($feed) && $feed->favicon)
+                            <img src="{{ $feed->favicon }}" class="w-3.5 h-3.5 rounded-sm opacity-80 flex-shrink-0" alt="">
+                        @else
+                            <ion-icon name="{{ isset($folder) ? 'folder-outline' : 'newspaper-outline' }}" class="text-surface-400 text-sm flex-shrink-0 hidden sm:block"></ion-icon>
+                        @endif
+                        <span class="text-[10px] font-bold text-surface-400 dark:text-surface-500 uppercase tracking-[0.1em] sm:tracking-[0.2em] truncate max-w-[100px] sm:max-w-[200px] lg:max-w-none">
+                            {{ $pageTitle }}
+                        </span>
+                    </div>
+                @endif
+
                 <!-- Context Actions (Mark All Read, Add) -->
                 @if(isset($contextActions))
                     <div class="flex items-center gap-1.5 md:gap-2 overflow-x-auto no-scrollbar">
@@ -404,6 +418,15 @@
                 </button>
                 
                 <!-- Utilities -->
+                <form action="{{ route('feeds.refresh-all') }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Refresh All Feeds">
+                        <ion-icon name="refresh-outline" class="text-xl"></ion-icon>
+                    </button>
+                </form>
+                <a href="{{ route('ai-configs.index') }}" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Manage AI Engines">
+                    <ion-icon name="hardware-chip-outline" class="text-xl"></ion-icon>
+                </a>
                 <a href="{{ route('feeds.manage') }}" class="p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-primary-600 transition-colors" title="Manage Feeds">
                     <ion-icon name="pulse-outline" class="text-xl"></ion-icon>
                 </a>

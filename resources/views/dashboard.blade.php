@@ -16,12 +16,21 @@
         @if(isset($feed))
             <form action="{{ route('feeds.mark-all-read', $feed) }}" method="POST" class="inline">
                 @csrf
-                <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-orange-600 dark:hover:text-orange-400 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all">
+                <button type="submit" class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-200 hover:text-orange-600 dark:hover:text-orange-400 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all" 
+                        title="Mark all as read and go to next feed">
                     <ion-icon name="checkmark-done-outline"></ion-icon>
-                    <span class="hidden lg:inline">Mark All Read</span>
-                    <span class="lg:hidden">Mark Read</span>
+                    <span class="hidden lg:inline">Mark All Read {{ isset($nextFeed) ? '& Next' : '' }}</span>
+                    <span class="lg:hidden">Read {{ isset($nextFeed) ? '→' : '' }}</span>
                 </button>
             </form>
+
+            @if(isset($nextFeed))
+                <a href="{{ route('feed.show', $nextFeed) }}" 
+                   title="Skip to next: {{ $nextFeed->name }}"
+                   class="cursor-pointer bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-400 hover:text-primary-600 dark:hover:text-primary-400 p-1.5 rounded-lg transition-all flex items-center justify-center">
+                    <ion-icon name="chevron-forward-outline" class="text-xl"></ion-icon>
+                </a>
+            @endif
         @elseif(isset($folder))
             <form action="{{ route('folders.mark-all-read', $folder) }}" method="POST" class="inline">
                 @csrf
@@ -32,7 +41,7 @@
                 </button>
             </form>
         @endif
-        <button @click="openAddModal = true" class="cursor-pointer bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-lg shadow-primary-500/30 flex items-center gap-2 transition-all">
+        <button @click="openAddModal = true" class="cursor-pointer bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-lg shadow-primary-500/30 flex items-center gap-2 transition-all" title="Add Source">
             <ion-icon name="add-outline"></ion-icon>
             <span>+</span>
         </button>
