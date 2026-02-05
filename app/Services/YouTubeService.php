@@ -59,22 +59,25 @@ class YouTubeService
             return ['error' => 'Gemini API Key not configured'];
         }
 
-        // Models confirmed confirming to your screenshots (AI Studio)
-        // You have 5-10 RPM on these 2.5 versions!
+        // Diverse list to catch any working model
         $models = [
-            'gemini-2.5-flash',       // 5 RPM limit (High quality)
-            'gemini-2.5-flash-lite',  // 10 RPM limit (Faster/More quota)
-            'gemini-2.0-flash-exp',   // Fallback
+            'gemini-2.5-flash',
+            'gemini-2.5-flash-lite',
+            'gemini-2.0-flash-lite-preview-02-05',
+            'gemini-2.0-flash-lite-001',
+            'gemini-2.0-flash'
         ];
 
-        $lastError = '';
+        $requestErrors = [];
 
         foreach ($models as $model) {
-            if ($lastError) sleep(1); // Brief pause between retries
+            // Pause between retries
+            if (!empty($requestErrors)) sleep(1);
 
             $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
-
-            $prompt = <<<EOT
+            
+            // Re-define prompt here to ensure clarity in loop scope
+             $prompt = <<<EOT
 Analyza este video de YouTube: {$url}
 
 Tu tarea es actuar como un servicio de transcripción exacto.
@@ -98,7 +101,6 @@ EOT;
                             ]
                         ]
                     ], 
-                    // Tool config for Grounding (accessing YouTube URL correctly in Gemini 2.0)
                     'tools' => [
                         [
                             'google_search' => (object)[] 
@@ -133,22 +135,24 @@ EOT;
                          }
                      }
                 } else {
-                    $lastError = $response->body();
-                    Log::warning("Gemini model {$model} failed: " . $lastError);
+                    $errorBody = $response->body();
+                    $status = $response->status();
+                    $requestErrors[] = "Model {$model} ({$status}): {$errorBody}";
                     
-                    // Stop immediately if Rate Limit (429) to avoid ban or wasted tries
-                    if ($response->status() === 429) {
-                         return ['error' => "Rate Limit Exceeded (429). Please wait 60s. Details: " . $lastError];
+                    Log::warning("Gemini model {$model} failed: {$errorBody}");
+                    
+                    if ($status === 429) {
+                         return ['error' => "Rate Limit Exceeded (429) on {$model}. Please wait. Details: " . implode(" | ", $requestErrors)];
                     }
                 }
 
             } catch (\Exception $e) {
-                $lastError = $e->getMessage();
+                $requestErrors[] = "Model {$model} Exception: " . $e->getMessage();
             }
         }
         
-        // If we reach here, all models failed (and none were 429)
-        return ['error' => 'All Gemini models failed. Last error: ' . $lastError];
+        // If we reach here, all models failed
+        return ['error' => 'All Gemini models failed. Trace: ' . implode(" || ", $requestErrors)];
     }
 
     protected function extractVideoId(string $url): ?string
