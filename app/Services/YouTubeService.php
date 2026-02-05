@@ -80,12 +80,16 @@ class YouTubeService
             $prompt = <<<EOT
 Analyza este video de YouTube: {$url}
 
-Tu tarea es actuar como un servicio de extracción y resumen.
-Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin ```json) con la siguiente estructura:
+Tu tarea es actuar como un servicio de transcripción exacto.
+IMPORTANTE: Para el campo "transcript", necesito TODOS los subtítulos o el audio hablado PALABRA POR PALABRA. 
+NO describas lo que se ve en pantalla (ej. "el video muestra..."). Solo transcribe lo que se DICE.
+Si el video es muy largo, prioriza los primeros 10 minutos de diálogo literal.
+
+Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
 {
-    "title": "El título del video (si puedes detectarlo, sino usa 'Video Summary')",
+    "title": "El título del video",
     "summary": "Un resumen ejecutivo detallado del video. Tema principal, puntos clave y conclusión.",
-    "transcript": "Una transcripción aproximada o los puntos más importantes hablados en el video. Si es muy largo, resume los diálogos clave."
+    "transcript": "TRANSCRIPCIÓN LITERAL DEL AUDIO (Verbatim). No resumas este campo. Escribe lo que dicen los hablantes."
 }
 EOT;
 
