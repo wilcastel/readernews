@@ -38,7 +38,8 @@ class YouTubeService
             ];
         }
 
-        // 2. Fallback: Gemini API (If local method failed)
+        // 2. Fallback: Gemini API (DISABLED due to hallucinations/unreliability on transcripts)
+        /*
         Log::info("Local transcript failed for video {$videoId}. Attempting fallback with Gemini API.");
         
         $geminiResult = $this->processWithGemini($url);
@@ -49,6 +50,9 @@ class YouTubeService
         }
 
         return $geminiResult;
+        */
+
+        return ['error' => 'Could not fetch transcript. YouTube blocked the server IP (or video has no captions), and Gemini fallback is disabled to prevent hallucinations. Please configure a valid YOUTUBE_PROXY in .env'];
     }
 
     protected function processWithGemini(string $url): array
@@ -63,6 +67,7 @@ class YouTubeService
         $models = [
             'gemini-2.5-flash',
             'gemini-2.5-flash-lite',
+            'gemini-2.0-flash-lite-preview-02-05',
             'gemini-2.0-flash-lite-001',
             'gemini-2.0-flash'
         ];
