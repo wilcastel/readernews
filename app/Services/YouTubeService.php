@@ -59,40 +59,33 @@ class YouTubeService
             return ['error' => 'Gemini API Key not configured'];
         }
 
-        // Prioritize models with generous free tiers
+        // 1. Models confirmed to exist in your account. 
+        // 2. We prioritize 2.0 Flash as it is multimodal native and generous.
         $models = [
-            'gemini-2.0-flash-exp', // Often has best free limits
-            'gemini-2.0-flash',
-            'gemini-1.5-flash',
-            'gemini-1.5-flash-latest'
+            'gemini-2.0-flash', 
+            'gemini-2.0-flash-lite-preview-02-05',
+            'gemini-2.0-flash-exp'
         ];
 
         $lastError = '';
 
         foreach ($models as $model) {
-            // Add a slight delay to avoid hitting rate limits instantly if looping
-            if ($lastError) sleep(1);
+            if ($lastError) sleep(1); // Brief pause between retries
 
             $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
-            
-            // ... (rest of the loop remains same, skipped for brevity in tool call but impl is conceptually same) ... 
-            // WAIT, can't skip in replace block. I must reproduce the loop or target specifically.
-            // Since I am replacing the WHOLE block from start of array definition to end of loop, I need to include loop content.
-            
-            // Prompt designed to extract structured data
+
             $prompt = <<<EOT
 Analyza este video de YouTube: {$url}
 
 Tu tarea es actuar como un servicio de transcripción exacto.
 IMPORTANTE: Para el campo "transcript", necesito TODOS los subtítulos o el audio hablado PALABRA POR PALABRA. 
-NO describas lo que se ve en pantalla (ej. "el video muestra..."). Solo transcribe lo que se DICE.
-Si el video es muy largo, prioriza los primeros 10 minutos de diálogo literal.
+NO describas lo que se ve en pantalla. Solo transcribe lo que se DICE.
 
 Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
 {
     "title": "El título del video",
-    "summary": "Un resumen ejecutivo detallado del video. Tema principal, puntos clave y conclusión.",
-    "transcript": "TRANSCRIPCIÓN LITERAL DEL AUDIO (Verbatim). No resumas este campo. Escribe lo que dicen los hablantes."
+    "summary": "Un resumen ejecutivo detallado.",
+    "transcript": "TRANSCRIPCIÓN LITERAL DEL AUDIO."
 }
 EOT;
 
@@ -104,12 +97,13 @@ EOT;
                                 ['text' => $prompt]
                             ]
                         ]
-                    ],
+                    ], 
+                    // Tool config for Grounding (accessing YouTube URL correctly in Gemini 2.0)
                     'tools' => [
                         [
-                            'google_search' => (object)[] // Empty object enables standard search
+                            'google_search' => (object)[] 
                         ]
-                    ],
+                    ], 
                     'generationConfig' => [
                         'temperature' => 0.4,
                         'responseMimeType' => 'application/json' 
@@ -122,13 +116,12 @@ EOT;
                      
                      if ($responseText) {
                          $parsed = json_decode($responseText, true);
-            
-                        if (json_last_error() !== JSON_ERROR_NONE) {
-                            $cleanText = preg_replace('/^```json\s*|\s*```$/', '', $responseText);
-                            $parsed = json_decode($cleanText, true);
-                        }
+                         if (json_last_error() !== JSON_ERROR_NONE) {
+                             $cleanText = preg_replace('/^```json\s*|\s*```$/', '', $responseText);
+                             $parsed = json_decode($cleanText, true);
+                         }
 
-                        if ($parsed) {
+                         if ($parsed) {
                             $videoId = $this->extractVideoId($url);
                             return [
                                 'video_id' => $videoId,
@@ -137,27 +130,24 @@ EOT;
                                 'summary' => $parsed['summary'] ?? 'No summary generated.',
                                 'url' => $url
                             ];
-                        }
+                         }
                      }
                 } else {
                     $lastError = $response->body();
                     Log::warning("Gemini model {$model} failed: " . $lastError);
+                    
+                    // Stop immediately if Rate Limit (429) to avoid ban or wasted tries
+                    if ($response->status() === 429) {
+                         return ['error' => "Rate Limit Exceeded (429). Please wait 60s. Details: " . $lastError];
+                    }
                 }
 
             } catch (\Exception $e) {
                 $lastError = $e->getMessage();
             }
         }
-
-        // If all failed, let's try to list available models to help debugging
-        try {
-            $listResponse = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
-            if ($listResponse->successful()) {
-                $availableModels = collect($listResponse->json()['models'] ?? [])->pluck('name')->implode(', ');
-                return ['error' => "Last Error: {$lastError}. Available models: " . $availableModels];
-            }
-        } catch(\Exception $e) {}
-
+        
+        // If we reach here, all models failed (and none were 429)
         return ['error' => 'All Gemini models failed. Last error: ' . $lastError];
     }
 
@@ -170,9 +160,6 @@ EOT;
     protected function fetchTranscript(string $videoId): string
     {
         $scriptPath = base_path('scripts/fetch_transcript.py');
-        
-        /*$venvPath = '/home/wilcastell-reader/venv/bin/python';
-        $pythonCmd = file_exists($venvPath) ? $venvPath : (PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3');*/
         $pythonCmd = 'python3';
         
         $process = new Process([$pythonCmd, $scriptPath, $videoId]);
@@ -204,14 +191,10 @@ Transcripción:
 $context
 EOT;
         
-        // Ensure OllamaService has this method or we need to fix it. 
-        // Based on previous file reading, it seemed expected but maybe missing.
-        // Assuming user has it or I should check OllamaService next.
         if (method_exists($this->ollama, 'generateText')) {
              return $this->ollama->generateText($prompt);
         }
         
-        // Fallback if generateText doesn't exist (e.g. use a default method)
         return "Summary generation not available (Method missing in OllamaService).";
     }
 }
