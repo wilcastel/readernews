@@ -59,11 +59,21 @@ class YouTubeService
             return ['error' => 'Gemini API Key not configured'];
         }
 
-        $model = config('services.gemini.model') ?? 'gemini-1.5-flash-001';
-        $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+        $models = [
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-flash-001',
+            'gemini-1.5-pro',
+            'gemini-1.5-pro-latest'
+        ];
 
-        // Prompt designed to extract structured data
-        $prompt = <<<EOT
+        $lastError = '';
+
+        foreach ($models as $model) {
+            $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+
+            // Prompt designed to extract structured data
+            $prompt = <<<EOT
 Analyza este video de YouTube: {$url}
 
 Tu tarea es actuar como un servicio de extracción y resumen.
@@ -75,61 +85,58 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin ```json) con la s
 }
 EOT;
 
-        try {
-            $response = Http::post($endpoint, [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $prompt]
+            try {
+                $response = Http::post($endpoint, [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => $prompt]
+                            ]
                         ]
+                    ],
+                    'generationConfig' => [
+                        'temperature' => 0.4,
+                        'responseMimeType' => 'application/json' 
                     ]
-                ],
-                'generationConfig' => [
-                    'temperature' => 0.4,
-                    'responseMimeType' => 'application/json' 
-                ]
-            ]);
+                ]);
 
-            if ($response->failed()) {
-                $errorBody = $response->body();
-                Log::error('Gemini API Error: ' . $errorBody);
-                return ['error' => 'Gemini API Error: ' . $errorBody];
-            }
-
-            $data = $response->json();
-            $responseText = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-
-            if (!$responseText) {
-                return ['error' => 'Empty response from Gemini. Body: ' . $response->body()];
-            }
-
-            // Parse JSON response
-            $parsed = json_decode($responseText, true);
+                if ($response->successful()) {
+                     $data = $response->json();
+                     $responseText = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+                     
+                     if ($responseText) {
+                         // Success! Parse and return.
+                         $parsed = json_decode($responseText, true);
             
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                // Try to clean markdown if Gemini ignored instructions
-                $cleanText = preg_replace('/^```json\s*|\s*```$/', '', $responseText);
-                $parsed = json_decode($cleanText, true);
+                        if (json_last_error() !== JSON_ERROR_NONE) {
+                            $cleanText = preg_replace('/^```json\s*|\s*```$/', '', $responseText);
+                            $parsed = json_decode($cleanText, true);
+                        }
+
+                        if ($parsed) {
+                            $videoId = $this->extractVideoId($url);
+                            return [
+                                'video_id' => $videoId,
+                                'title' => $parsed['title'] ?? 'Video Summary (Gemini)',
+                                'transcript' => $parsed['transcript'] ?? 'No transcript generated.',
+                                'summary' => $parsed['summary'] ?? 'No summary generated.',
+                                'url' => $url
+                            ];
+                        }
+                     }
+                } else {
+                    $lastError = $response->body();
+                    Log::warning("Gemini model {$model} failed: " . $lastError);
+                }
+
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
             }
-
-            if (!$parsed) {
-                return ['error' => 'Failed to parse Gemini JSON response'];
-            }
-
-            $videoId = $this->extractVideoId($url);
-
-            return [
-                'video_id' => $videoId,
-                'title' => $parsed['title'] ?? 'Video Summary (Gemini)',
-                'transcript' => $parsed['transcript'] ?? 'No transcript generated.',
-                'summary' => $parsed['summary'] ?? 'No summary generated.',
-                'url' => $url
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Gemini Fallback Exception: ' . $e->getMessage());
-            return ['error' => 'System error during Gemini fallback'];
+            
+            // If we are here, continue to next model
         }
+
+        return ['error' => 'All Gemini models failed. Last error: ' . $lastError];
     }
 
     protected function extractVideoId(string $url): ?string
