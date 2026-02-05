@@ -393,4 +393,22 @@ class FeedController extends Controller
             ]);
         }
     }
+    public function restartQueues()
+    {
+        try {
+            // 1. Clear config/cache to ensure fresh settings
+            \Illuminate\Support\Facades\Artisan::call('config:clear');
+            \Illuminate\Support\Facades\Artisan::call('cache:clear');
+            
+            // 2. Restart queue workers (Supervisor will pick them up)
+            \Illuminate\Support\Facades\Artisan::call('queue:restart');
+            
+            // 3. Retry any failed jobs immediately
+            \Illuminate\Support\Facades\Artisan::call('queue:retry', ['id' => 'all']);
+            
+            return back()->with('success', 'System queues restarted forcefully. Configuration refreshed and failed jobs queued for retry.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to restart queues: ' . $e->getMessage());
+        }
+    }
 }

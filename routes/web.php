@@ -55,6 +55,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Feed Management
     Route::get('/feeds/manage', [FeedController::class, 'manage'])->name('feeds.manage');
     Route::put('/feeds/{feed}/toggle-mode', [FeedController::class, 'toggleMode'])->name('feeds.toggle-mode');
+    Route::post('/system/restart-queues', [FeedController::class, 'restartQueues'])->name('system.restart-queues');
 
     // Settings
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');

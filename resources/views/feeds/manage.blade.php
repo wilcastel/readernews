@@ -11,9 +11,18 @@
                 <h1 class="text-3xl font-bold dark:text-white">Feed Health & Management</h1>
                 <p class="text-surface-500 mt-2">Check the status of your subscriptions and configure connection modes.</p>
             </div>
-            <a href="{{ route('dashboard') }}" class="px-4 py-2 rounded-lg bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-300 font-medium transition-colors">
-                &larr; Back to Dashboard
-            </a>
+            <div class="flex items-center gap-3">
+                <form action="{{ route('system.restart-queues') }}" method="POST" onsubmit="return confirm('WARNING: This will restart all queue workers and retry failed jobs. Continue?')">
+                    @csrf
+                    <button type="submit" class="px-3 py-2 rounded-lg bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-medium transition-colors text-sm flex items-center gap-2" title="Restart workers & retry failed jobs">
+                        <ion-icon name="pulse-outline"></ion-icon>
+                        <span>Restart Queues</span>
+                    </button>
+                </form>
+                <a href="{{ route('dashboard') }}" class="px-4 py-2 rounded-lg bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-300 font-medium transition-colors">
+                    &larr; Back to Dashboard
+                </a>
+            </div>
         </div>
 
         @if(session('success'))
