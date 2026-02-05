@@ -63,7 +63,6 @@ class YouTubeService
         $models = [
             'gemini-2.5-flash',
             'gemini-2.5-flash-lite',
-            'gemini-2.0-flash-lite-preview-02-05',
             'gemini-2.0-flash-lite-001',
             'gemini-2.0-flash'
         ];
