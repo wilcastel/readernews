@@ -59,12 +59,12 @@ class YouTubeService
             return ['error' => 'Gemini API Key not configured'];
         }
 
-        // 1. Models confirmed to exist in your account. 
-        // 2. We prioritize 2.0 Flash EXP as it has better FREE limits than stable.
+        // Models confirmed confirming to your screenshots (AI Studio)
+        // You have 5-10 RPM on these 2.5 versions!
         $models = [
-            'gemini-2.0-flash-exp', 
-            'gemini-2.0-flash', 
-            'gemini-2.0-flash-lite-preview-02-05',
+            'gemini-2.5-flash',       // 5 RPM limit (High quality)
+            'gemini-2.5-flash-lite',  // 10 RPM limit (Faster/More quota)
+            'gemini-2.0-flash-exp',   // Fallback
         ];
 
         $lastError = '';
