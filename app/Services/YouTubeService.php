@@ -179,7 +179,13 @@ EOT;
         $scriptPath = base_path('scripts/fetch_transcript.py');
         $pythonCmd = 'python3';
         
-        $process = new Process([$pythonCmd, $scriptPath, $videoId]);
+        $env = null;
+        if ($proxy = env('YOUTUBE_PROXY')) {
+            $env = ['YOUTUBE_PROXY' => $proxy];
+        }
+
+        // Pass env vars to the process
+        $process = new Process([$pythonCmd, $scriptPath, $videoId], null, $env);
         $process->setTimeout(120);
         $process->run();
 

@@ -1,20 +1,23 @@
 import sys
 import json
+import os
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import TextFormatter
 
 def get_transcript(video_id):
     try:
-        # Try to fetch transcript (prefer manual, fallback to auto-generated)
-        # ADAPTATION: Version 1.2.3 seemingly uses 'list' instead of 'list_transcripts'
-        # Try to fetch transcript (prefer manual, fallback to auto-generated)
-        # ADAPTATION: Version 1.2.3 seemingly uses 'list' instead of 'list_transcripts'
-        
+        proxies = None
+        proxy_url = os.environ.get('YOUTUBE_PROXY')
+        if proxy_url:
+            proxies = {"http": proxy_url, "https": proxy_url}
+
         if hasattr(YouTubeTranscriptApi, 'list_transcripts'):
-             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, proxies=proxies)
         else:
-             api = YouTubeTranscriptApi()
-             transcript_list = api.list(video_id)
+             # Older versions might not support proxies directly in list(), 
+             # but check docs. Assuming newer version installed via pip.
+             api = YouTubeTranscriptApi() 
+             transcript_list = api.list(video_id, proxies=proxies)
         
         # Prefer manually created transcripts, then auto-generated
         # Prefer English, Spanish
