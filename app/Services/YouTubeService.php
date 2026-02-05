@@ -108,7 +108,7 @@ EOT;
                     ], 
                     'generationConfig' => [
                         'temperature' => 0.4,
-                        'responseMimeType' => 'application/json' 
+                        // 'responseMimeType' => 'application/json' // CONFLICTS WITH TOOLS in 2.5
                     ]
                 ]);
 
