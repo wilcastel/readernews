@@ -130,10 +130,26 @@ EOT;
                          if ($parsed) {
                             $transcriptText = $parsed['transcript'] ?? '';
 
-                            // VALIDATION: Reject generic tutorials
-                            // If Gemini hallucinates a tutorial, we reject it as a failure for this model
-                            if (stripos($transcriptText, 'To get a transcript') !== false || stripos($transcriptText, 'Open the video') !== false || stripos($transcriptText, 'Select the transcript') !== false) {
-                                $requestErrors[] = "Model {$model} returned a generic tutorial instead of content. Rejected.";
+                            // VALIDATION: Reject generic tutorials and specific hallucinations
+                            $hallucinationKeywords = [
+                                'To get a transcript', 
+                                'Open the video', 
+                                'Select the transcript', 
+                                'Eightify', 
+                                'In this tutorial',
+                                'how to use'
+                            ];
+                            
+                            $isHallucination = false;
+                            foreach ($hallucinationKeywords as $keyword) {
+                                if (stripos($transcriptText, $keyword) !== false) {
+                                    $isHallucination = true;
+                                    break;
+                                }
+                            }
+
+                            if ($isHallucination) {
+                                $requestErrors[] = "Model {$model} returned a generic tutorial/hallucination. Rejected.";
                                 continue; 
                             }
 
