@@ -104,12 +104,7 @@ EOT;
                     ],
                     'tools' => [
                         [
-                            'google_search_retrieval' => [
-                                'dynamic_retrieval_config' => [
-                                    'mode' => 'MODE_DYNAMIC',
-                                    'dynamic_threshold' => 0.7
-                                ]
-                            ]
+                            'google_search' => (object)[] // Empty object enables standard search
                         ]
                     ],
                     'generationConfig' => [
