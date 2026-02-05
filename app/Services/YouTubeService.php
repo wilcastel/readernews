@@ -31,7 +31,7 @@ class YouTubeService
 
             return [
                 'video_id' => $videoId,
-                'title' => 'Video Summary', // Ideally we fetch title via oEmbed or scrap, for now placeholder
+                'title' => 'Video Summary', 
                 'transcript' => $transcript,
                 'summary' => $summary,
                 'url' => $url
@@ -76,19 +76,23 @@ class YouTubeService
 
             $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
             
-            // Re-define prompt here to ensure clarity in loop scope
-             $prompt = <<<EOT
-Analyza este video de YouTube: {$url}
+            // Refined Prompt: Explicitly forbid tutorials
+            $prompt = <<<EOT
+Video URL: {$url}
 
-Tu tarea es actuar como un servicio de transcripción exacto.
-IMPORTANTE: Para el campo "transcript", necesito TODOS los subtítulos o el audio hablado PALABRA POR PALABRA. 
-NO describas lo que se ve en pantalla. Solo transcribe lo que se DICE.
+OBJETIVO: Obtener el contenido hablado real (transcripción) de este video utilizando Google Search para encontrar transcripciones, subtítulos o resúmenes muy detallados existentes en la web.
 
-Devuelve ÚNICAMENTE un objeto JSON válido con la siguiente estructura:
+INSTRUCCIONES ESTRICTAS:
+1. Busca el texto hablado del video.
+2. NO generes un tutorial sobre "cómo obtener una transcripción".
+3. Si no encuentras el texto exacto, genera un RESUMEN EXTENSO basado en lo que encuentres sobre el video.
+4. Para el campo "transcript", intenta reconstruir lo que se dice. Si es imposible, pon "TRANSCRIPT_NOT_FOUND".
+
+Devuelve JSON:
 {
-    "title": "El título del video",
-    "summary": "Un resumen ejecutivo detallado.",
-    "transcript": "TRANSCRIPCIÓN LITERAL DEL AUDIO."
+    "title": "Titulo del video",
+    "summary": "Resumen detallado.",
+    "transcript": "Texto hablado completo o 'TRANSCRIPT_NOT_FOUND' si no se puede acceder."
 }
 EOT;
 
@@ -107,8 +111,8 @@ EOT;
                         ]
                     ], 
                     'generationConfig' => [
-                        'temperature' => 0.4,
-                        // 'responseMimeType' => 'application/json' // CONFLICTS WITH TOOLS in 2.5
+                        'temperature' => 0.2, // Lower temp for more factual output
+                         // JSON mode removed as it conflicts with tools in 2.5
                     ]
                 ]);
 
@@ -124,11 +128,20 @@ EOT;
                          }
 
                          if ($parsed) {
+                            $transcriptText = $parsed['transcript'] ?? '';
+
+                            // VALIDATION: Reject generic tutorials
+                            // If Gemini hallucinates a tutorial, we reject it as a failure for this model
+                            if (stripos($transcriptText, 'To get a transcript') !== false || stripos($transcriptText, 'Open the video') !== false || stripos($transcriptText, 'Select the transcript') !== false) {
+                                $requestErrors[] = "Model {$model} returned a generic tutorial instead of content. Rejected.";
+                                continue; 
+                            }
+
                             $videoId = $this->extractVideoId($url);
                             return [
                                 'video_id' => $videoId,
                                 'title' => $parsed['title'] ?? 'Video Summary (Gemini)',
-                                'transcript' => $parsed['transcript'] ?? 'No transcript generated.',
+                                'transcript' => $transcriptText,
                                 'summary' => $parsed['summary'] ?? 'No summary generated.',
                                 'url' => $url
                             ];
@@ -142,7 +155,7 @@ EOT;
                     Log::warning("Gemini model {$model} failed: {$errorBody}");
                     
                     if ($status === 429) {
-                         return ['error' => "Rate Limit Exceeded (429) on {$model}. Please wait. Details: " . implode(" | ", $requestErrors)];
+                         return ['error' => "Rate Limit Exceeded (429) on {$model}. Wait 60s. Trace: " . implode(" | ", $requestErrors)];
                     }
                 }
 
@@ -152,7 +165,7 @@ EOT;
         }
         
         // If we reach here, all models failed
-        return ['error' => 'All Gemini models failed. Trace: ' . implode(" || ", $requestErrors)];
+        return ['error' => 'All Gemini models failed to get content. Trace: ' . implode(" || ", $requestErrors)];
     }
 
     protected function extractVideoId(string $url): ?string
