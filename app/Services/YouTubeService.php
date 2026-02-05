@@ -60,11 +60,11 @@ class YouTubeService
         }
 
         // 1. Models confirmed to exist in your account. 
-        // 2. We prioritize 2.0 Flash as it is multimodal native and generous.
+        // 2. We prioritize 2.0 Flash EXP as it has better FREE limits than stable.
         $models = [
+            'gemini-2.0-flash-exp', 
             'gemini-2.0-flash', 
             'gemini-2.0-flash-lite-preview-02-05',
-            'gemini-2.0-flash-exp'
         ];
 
         $lastError = '';
