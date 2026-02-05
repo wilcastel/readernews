@@ -64,14 +64,20 @@ class YouTubeService
             'gemini-1.5-flash-latest',
             'gemini-1.5-flash-001',
             'gemini-1.5-pro',
-            'gemini-1.5-pro-latest'
+            'gemini-1.5-pro-latest',
+            'gemini-2.0-flash-exp', // New experimental
+            'gemini-1.0-pro' // Legacy fallback
         ];
 
         $lastError = '';
 
         foreach ($models as $model) {
             $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
-
+            
+            // ... (rest of the loop remains same, skipped for brevity in tool call but impl is conceptually same) ... 
+            // WAIT, can't skip in replace block. I must reproduce the loop or target specifically.
+            // Since I am replacing the WHOLE block from start of array definition to end of loop, I need to include loop content.
+            
             // Prompt designed to extract structured data
             $prompt = <<<EOT
 Analyza este video de YouTube: {$url}
@@ -105,7 +111,6 @@ EOT;
                      $responseText = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
                      
                      if ($responseText) {
-                         // Success! Parse and return.
                          $parsed = json_decode($responseText, true);
             
                         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -132,9 +137,16 @@ EOT;
             } catch (\Exception $e) {
                 $lastError = $e->getMessage();
             }
-            
-            // If we are here, continue to next model
         }
+
+        // If all failed, let's try to list available models to help debugging
+        try {
+            $listResponse = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
+            if ($listResponse->successful()) {
+                $availableModels = collect($listResponse->json()['models'] ?? [])->pluck('name')->implode(', ');
+                return ['error' => "All models failed. Available models for your key: " . $availableModels];
+            }
+        } catch(\Exception $e) {}
 
         return ['error' => 'All Gemini models failed. Last error: ' . $lastError];
     }
