@@ -6,18 +6,21 @@ from youtube_transcript_api.formatters import TextFormatter
 
 def get_transcript(video_id):
     try:
-        proxies = None
+        # Configure proxy via environment variables for universal compatibility
+        # This works even with older versions of the library/requests
         proxy_url = os.environ.get('YOUTUBE_PROXY')
         if proxy_url:
-            proxies = {"http": proxy_url, "https": proxy_url}
+            os.environ['HTTP_PROXY'] = proxy_url
+            os.environ['HTTPS_PROXY'] = proxy_url
+            # Also set lowercase for some libs
+            os.environ['http_proxy'] = proxy_url
+            os.environ['https_proxy'] = proxy_url
 
         if hasattr(YouTubeTranscriptApi, 'list_transcripts'):
-             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, proxies=proxies)
+             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         else:
-             # Older versions might not support proxies directly in list(), 
-             # but check docs. Assuming newer version installed via pip.
-             api = YouTubeTranscriptApi() 
-             transcript_list = api.list(video_id, proxies=proxies)
+             api = YouTubeTranscriptApi()
+             transcript_list = api.list(video_id)
         
         # Prefer manually created transcripts, then auto-generated
         # Prefer English, Spanish
