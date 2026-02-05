@@ -59,17 +59,20 @@ class YouTubeService
             return ['error' => 'Gemini API Key not configured'];
         }
 
+        // Prioritize models with generous free tiers
         $models = [
+            'gemini-2.0-flash-exp', // Often has best free limits
             'gemini-2.0-flash',
-            'gemini-2.0-flash-001',
-            'gemini-2.5-flash',
-            'gemini-2.0-flash-lite',
-            'gemini-flash-latest' // Alias que aparecía en tu lista
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-latest'
         ];
 
         $lastError = '';
 
         foreach ($models as $model) {
+            // Add a slight delay to avoid hitting rate limits instantly if looping
+            if ($lastError) sleep(1);
+
             $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
             
             // ... (rest of the loop remains same, skipped for brevity in tool call but impl is conceptually same) ... 
