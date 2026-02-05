@@ -156,7 +156,7 @@ EOT;
             $listResponse = Http::get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
             if ($listResponse->successful()) {
                 $availableModels = collect($listResponse->json()['models'] ?? [])->pluck('name')->implode(', ');
-                return ['error' => "All models failed. Available models for your key: " . $availableModels];
+                return ['error' => "Last Error: {$lastError}. Available models: " . $availableModels];
             }
         } catch(\Exception $e) {}
 
