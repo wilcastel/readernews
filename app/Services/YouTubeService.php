@@ -91,15 +91,16 @@ EOT;
             ]);
 
             if ($response->failed()) {
-                Log::error('Gemini API Error: ' . $response->body());
-                return ['error' => 'Gemini API call failed'];
+                $errorBody = $response->body();
+                Log::error('Gemini API Error: ' . $errorBody);
+                return ['error' => 'Gemini API Error: ' . $errorBody];
             }
 
             $data = $response->json();
             $responseText = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
             if (!$responseText) {
-                return ['error' => 'Empty response from Gemini'];
+                return ['error' => 'Empty response from Gemini. Body: ' . $response->body()];
             }
 
             // Parse JSON response
