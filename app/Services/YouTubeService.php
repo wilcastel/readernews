@@ -59,7 +59,7 @@ class YouTubeService
             return ['error' => 'Gemini API Key not configured'];
         }
 
-        $model = config('services.gemini.model') ?? 'gemini-1.5-flash';
+        $model = config('services.gemini.model') ?? 'gemini-1.5-flash-001';
         $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
         // Prompt designed to extract structured data
