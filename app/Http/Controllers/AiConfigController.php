@@ -45,6 +45,14 @@ class AiConfigController extends Controller
         // Defaults
         $validated['is_active'] = $request->has('is_active') || $request->is_active === 'true';
 
+        // Auto-calculate approximate usage if prices are present AND mode is paid
+        if ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
+             $calculated = $this->calculateApproximateUsage($validated['input_price'], $validated['output_price']);
+             if (empty($validated['cantaprox'])) {
+                 $validated['cantaprox'] = $calculated;
+             }
+        }
+
         \App\Models\AiConfig::create($validated);
 
         return redirect()->back()->with('success', 'AI Provider added.');
@@ -67,9 +75,35 @@ class AiConfigController extends Controller
 
         $validated['is_active'] = $request->has('is_active');
 
+        // Auto-calculate approximate usage if prices are updated and cantaprox is empty AND mode is paid
+        if ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
+             if (empty($validated['cantaprox'])) {
+                 $validated['cantaprox'] = $this->calculateApproximateUsage($validated['input_price'], $validated['output_price']);
+             }
+        }
+
         $aiConfig->update($validated);
 
         return redirect()->back()->with('success', 'AI Provider updated.');
+    }
+
+    /**
+     * Calculate approximate usage for $10 based on standard payload.
+     */
+    private function calculateApproximateUsage($inputPrice, $outputPrice)
+    {
+        $budget = 10;
+        $avgInputTokens = 1000;
+        $avgOutputTokens = 800;
+
+        // Prevent division by zero
+        if ($inputPrice <= 0 && $outputPrice <= 0) return 0;
+
+        $costPerUse = ($inputPrice * $avgInputTokens / 1000000) + ($outputPrice * $avgOutputTokens / 1000000);
+
+        if ($costPerUse <= 0) return 0;
+
+        return floor($budget / $costPerUse);
     }
 
     public function destroy(\App\Models\AiConfig $aiConfig)

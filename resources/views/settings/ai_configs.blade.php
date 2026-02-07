@@ -109,7 +109,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Usage Mode</label>
-                                <select name="mode" id="inputMode" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
+                                <select name="mode" id="inputMode" onchange="calculateApprox()" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
                                     <option value="local">Local Machine</option>
                                     <option value="free">Free Tier (Round Robin)</option>
                                     <option value="paid">Paid / Production</option>
@@ -117,18 +117,21 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-4">
+                        <div class="grid grid-cols-3 gap-4 relative">
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Input Price</label>
-                                <input type="number" step="0.00000001" name="input_price" id="inputInputPrice" placeholder="0.00" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Input Price ($/1M)</label>
+                                <input type="number" step="0.00000001" name="input_price" id="inputInputPrice" oninput="calculateApprox()" placeholder="0.25" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Output Price</label>
-                                <input type="number" step="0.00000001" name="output_price" id="inputOutputPrice" placeholder="0.00" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Output Price ($/1M)</label>
+                                <input type="number" step="0.00000001" name="output_price" id="inputOutputPrice" oninput="calculateApprox()" placeholder="0.38" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cant. Aprox ($10)</label>
-                                <input type="number" name="cantaprox" id="inputCantAprox" placeholder="e.g 500" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
+                                <input type="number" name="cantaprox" id="inputCantAprox" placeholder="Auto-calc" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm bg-slate-50 dark:bg-surface-900">
+                            </div>
+                            <div class="col-span-3 text-[10px] text-slate-400 text-right" id="calcInfo">
+                                Base: 1k tokens in / 800 out per request (based on real usage).
                             </div>
                         </div>
 
@@ -170,6 +173,31 @@
         <script>
             function closeModal() {
                 document.getElementById('createModal').style.display = 'none';
+            }
+
+            function calculateApprox() {
+                const mode = document.getElementById('inputMode').value;
+                const approxField = document.getElementById('inputCantAprox');
+
+                if (mode !== 'paid') {
+                    approxField.value = ''; 
+                    return;
+                }
+
+                const inputPrice = parseFloat(document.getElementById('inputInputPrice').value) || 0;
+                const outputPrice = parseFloat(document.getElementById('inputOutputPrice').value) || 0;
+                const budget = 10;
+                
+                // Estándar basado en uso real (ReaderNews): ~1000 tokens entrada, ~800 salida
+                const avgInputTokens = 1000;
+                const avgOutputTokens = 800;
+                
+                const costPerUse = (inputPrice * avgInputTokens / 1000000) + (outputPrice * avgOutputTokens / 1000000);
+                
+                if (costPerUse > 0) {
+                    const uses = Math.floor(budget / costPerUse);
+                    approxField.value = uses;
+                }
             }
 
             function openCreateModal() {
