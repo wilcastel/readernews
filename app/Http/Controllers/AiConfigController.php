@@ -35,7 +35,11 @@ class AiConfigController extends Controller
             'base_url' => 'nullable|url',
             'api_key' => 'nullable|string',
             'model_id' => 'required|string',
-            'mode' => 'required|in:local,paid,free'
+            'mode' => 'required|in:local,paid,free',
+            'input_price' => 'nullable|numeric|min:0',
+            'output_price' => 'nullable|numeric|min:0',
+            'cantaprox' => 'nullable|integer|min:0',
+            'description' => 'nullable|string'
         ]);
         
         // Defaults
@@ -46,7 +50,7 @@ class AiConfigController extends Controller
         return redirect()->back()->with('success', 'AI Provider added.');
     }
 
-    public function update(Request $request, \App\Models\AiConfig $aiConfig)
+    public function update(Request $request, \App\Models\AiConfig $aiConfig) // Ensure variable name matches
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -54,7 +58,11 @@ class AiConfigController extends Controller
             'base_url' => 'nullable|url',
             'api_key' => 'nullable|string',
             'model_id' => 'required|string',
-            'mode' => 'required|in:local,paid,free'
+            'mode' => 'required|in:local,paid,free',
+            'input_price' => 'nullable|numeric|min:0',
+            'output_price' => 'nullable|numeric|min:0',
+            'cantaprox' => 'nullable|integer|min:0',
+            'description' => 'nullable|string'
         ]);
 
         $validated['is_active'] = $request->has('is_active');

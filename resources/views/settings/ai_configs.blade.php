@@ -8,7 +8,7 @@
                 <h1 class="text-2xl md:text-3xl text-slate-800 dark:text-white font-bold">Manage AI Providers</h1>
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Configure Local and Cloud AI models locally.</p>
             </div>
-            <button onclick="document.getElementById('createModal').style.display='flex'" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+            <button onclick="openCreateModal()" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
                 <ion-icon name="add-outline"></ion-icon> Add Provider
             </button>
         </div>
@@ -104,6 +104,26 @@
                             </div>
                         </div>
 
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Input Price</label>
+                                <input type="number" step="0.00000001" name="input_price" id="inputInputPrice" placeholder="0.00" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Output Price</label>
+                                <input type="number" step="0.00000001" name="output_price" id="inputOutputPrice" placeholder="0.00" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cant. Aprox ($10)</label>
+                                <input type="number" name="cantaprox" id="inputCantAprox" placeholder="e.g 500" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                            <textarea name="description" id="inputDescription" rows="2" placeholder="Start typing description..." class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm"></textarea>
+                        </div>
+
                         <div>
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model ID</label>
                             <input type="text" name="model_id" id="inputModelId" required placeholder="e.g. llama3-70b-8192" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
@@ -139,6 +159,14 @@
                 document.getElementById('createModal').style.display = 'none';
             }
 
+            function openCreateModal() {
+                 document.getElementById('modalTitle').innerText = 'Add AI Provider';
+                 document.getElementById('configForm').action = '{{ route('ai-configs.store') }}';
+                 document.getElementById('methodField').innerHTML = '';
+                 document.getElementById('configForm').reset();
+                 document.getElementById('createModal').style.display = 'flex';
+            }
+
             function openEditModal(config) {
                 // Populate form
                 document.getElementById('modalTitle').innerText = 'Edit Provider';
@@ -153,11 +181,15 @@
                 document.getElementById('inputApiKey').value = config.api_key || ''; // Might be hidden in real app
                 document.getElementById('inputIsActive').checked = config.is_active;
 
+                // New fields
+                document.getElementById('inputInputPrice').value = config.input_price || '';
+                document.getElementById('inputOutputPrice').value = config.output_price || '';
+                document.getElementById('inputCantAprox').value = config.cantaprox || '';
+                document.getElementById('inputDescription').value = config.description || '';
+
                 document.getElementById('createModal').style.display = 'flex';
             }
-            
-            // Reset form for create
-            // ... (Simple logic simplifies for now)
+
         </script>
     </div>
 </x-layout>
