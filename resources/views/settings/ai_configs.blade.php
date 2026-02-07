@@ -9,6 +9,21 @@
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Configure Local and Cloud AI models locally.</p>
             </div>
             <div class="flex gap-2">
+                <!-- Sort Dropdown -->
+                <div x-data="{ open: false }" class="relative">
+                    <button @click="open = !open" @click.outside="open = false" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                        <ion-icon name="filter-outline"></ion-icon> Sort
+                        <ion-icon name="chevron-down-outline" class="text-xs"></ion-icon>
+                    </button>
+                    <div x-show="open" class="absolute right-0 mt-2 w-48 bg-white dark:bg-surface-800 rounded-lg shadow-lg border border-slate-200 dark:border-surface-700 z-50 py-1" style="display: none;">
+                        <a href="?sort=newest" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 {{ request('sort') == 'newest' || !request('sort') ? 'font-bold text-primary-600' : '' }}">Newest First</a>
+                        <a href="?sort=oldest" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 {{ request('sort') == 'oldest' ? 'font-bold text-primary-600' : '' }}">Oldest First</a>
+                        <a href="?sort=provider" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 {{ request('sort') == 'provider' ? 'font-bold text-primary-600' : '' }}">By Provider</a>
+                        <div class="border-t border-slate-200 dark:border-surface-700 my-1"></div>
+                        <a href="?sort=free_first" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 {{ request('sort') == 'free_first' ? 'font-bold text-green-600' : '' }}">Free / Local First</a>
+                        <a href="?sort=paid_first" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 {{ request('sort') == 'paid_first' ? 'font-bold text-yellow-600' : '' }}">Paid First</a>
+                    </div>
+                </div>
                  <a href="{{ route('ai-configs.export') }}" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
                     <ion-icon name="download-outline"></ion-icon> Export
                 </a>
@@ -63,9 +78,21 @@
                 </div>
 
                 <div class="mt-4 flex flex-wrap gap-2 text-xs">
-                    <span class="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    @php
+                        $modeColor = match($config->mode) {
+                            'free' => 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800',
+                            'paid' => 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800',
+                            default => 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                        };
+                    @endphp
+                    <span class="px-2 py-1 rounded-md border text-xs font-semibold {{ $modeColor }}">
                         {{ ucfirst($config->mode) }}
                     </span>
+                    @if($config->cantaprox > 0)
+                        <span class="px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-medium" title="Approximate uses per $10">
+                            ~{{ number_format($config->cantaprox) }} uses/$10
+                        </span>
+                    @endif
                     <span class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 {{ $config->is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200' }}">
                         {{ $config->is_active ? 'Active' : 'Inactive' }}
                     </span>

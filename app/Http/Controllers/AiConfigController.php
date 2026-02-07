@@ -11,7 +11,22 @@ class AiConfigController extends Controller
      */
     public function index(Request $request)
     {
-        $configs = \App\Models\AiConfig::orderBy('is_active', 'desc')->get();
+        $query = \App\Models\AiConfig::query();
+
+        if ($request->get('sort') === 'provider') {
+            $query->orderBy('provider', 'asc')->orderBy('name', 'asc');
+        } elseif ($request->get('sort') === 'oldest') {
+            $query->orderBy('created_at', 'asc');
+        } elseif ($request->get('sort') === 'free_first') {
+            $query->orderBy('mode', 'asc')->orderBy('name', 'asc');
+        } elseif ($request->get('sort') === 'paid_first') {
+            $query->orderBy('mode', 'desc')->orderBy('name', 'asc'); // Paid > Local > Free
+        } else {
+            // Default: Newest first
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $configs = $query->get();
         
         if ($request->wantsJson()) {
             return response()->json($configs);
