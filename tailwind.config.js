@@ -1,5 +1,6 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
+import typography from '@tailwindcss/typography';
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -14,6 +15,7 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Open Sans', 'Roboto', 'sans-serif', ...defaultTheme.fontFamily.sans],
+                serif: ['Merriweather', 'serif', ...defaultTheme.fontFamily.serif],
             },
             colors: {
                 surface: {
@@ -46,5 +48,5 @@ export default {
         },
     },
 
-    plugins: [forms],
+    plugins: [forms, typography],
 };

@@ -65,19 +65,28 @@
                 allowfullscreen>
             </iframe>
         </div>
-    @elseif($article->image_url)
-        <div class="h-64 w-full relative">
-            <img src="{{ $article->image_url }}" class="w-full h-full object-cover" alt="Article Header">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+    @elseif(!empty($article->image_url))
+        <div class="h-64 sm:h-80 w-full relative group">
+            <img src="{{ $article->image_url }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Article Header"
+                 onerror="this.style.display='none'">
+            <div class="absolute inset-0 bg-gradient-to-t from-surface-900/90 via-surface-900/40 to-transparent"></div>
+            
+            <!-- Download Button -->
+            <a href="{{ $article->image_url }}" download target="_blank" 
+               class="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+               title="Download Image">
+                <ion-icon name="download-outline" class="text-xl"></ion-icon>
+            </a>
+
             <div class="absolute bottom-6 left-6 right-6 text-white">
-                <h1 class="text-2xl font-bold font-serif leading-tight text-white shadow-black drop-shadow-md">
+                <h1 class="text-2xl sm:text-3xl font-bold font-sans leading-tight text-white shadow-black drop-shadow-md">
                     {{ $article->title }}
                 </h1>
             </div>
         </div>
     @else
-        <div class="p-6 pb-2 border-b border-surface-100 dark:border-surface-800">
-             <h1 class="text-2xl font-bold font-serif leading-tight text-surface-900 dark:text-white">
+        <div class="p-6 pb-2 border-b border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/50">
+             <h1 class="text-2xl sm:text-3xl font-bold font-sans leading-tight text-surface-900 dark:text-white">
                 {{ $article->title }}
             </h1>
         </div>
@@ -264,12 +273,16 @@
 
     <!-- Content Area -->
     <div class="p-6 md:p-8">
-        <div id="modal-article-content" class="prose dark:prose-invert prose-lg max-w-none font-sans leading-relaxed text-surface-800 dark:text-surface-300
-            prose-iframe:w-full prose-iframe:aspect-video prose-iframe:rounded-xl prose-img:rounded-xl">
+        <div id="modal-article-content" class="prose dark:prose-invert prose-lg max-w-none font-sans text-gray-800 dark:text-gray-200 leading-relaxed
+            prose-p:text-lg prose-p:leading-8 prose-p:mb-8 
+            prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-white
+            prose-a:text-primary-600 dark:prose-a:text-primary-400 prose-a:no-underline hover:prose-a:underline
+            prose-img:hidden
+            prose-iframe:w-full prose-iframe:aspect-video prose-iframe:rounded-xl">
             @if($article->content)
                 {!! $article->content !!}
             @else
-                <div class="text-xl font-sans text-surface-600 mb-8 leading-relaxed">
+                <div class="text-lg font-sans text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
                     {{ $article->summary }}
                 </div>
             @endif
