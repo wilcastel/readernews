@@ -77,4 +77,70 @@ class AiConfigController extends Controller
         $aiConfig->delete();
         return redirect()->back()->with('success', 'AI Provider deleted.');
     }
+
+    public function export()
+    {
+        $configs = \App\Models\AiConfig::all()->makeHidden(['api_key', 'created_at', 'updated_at', 'id']);
+        
+        $filename = 'ai-configs-' . date('Y-m-d') . '.json';
+        
+        return response()->streamDownload(function () use ($configs) {
+            echo $configs->toJson(JSON_PRETTY_PRINT);
+        }, $filename, [
+            'Content-Type' => 'application/json',
+        ]);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:json',
+        ]);
+
+        try {
+            $json = file_get_contents($request->file('file')->getRealPath());
+            $data = json_decode($json, true);
+
+            if (!is_array($data)) {
+                return back()->with('error', 'Invalid JSON format.');
+            }
+
+            $count = 0;
+            foreach ($data as $item) {
+                // strict validation could be done here similar to store()
+                if (empty($item['model_id']) || empty($item['provider'])) {
+                    continue; // Skip invalid entries
+                }
+                
+                // Allow "update or create" logic based on model_id + provider
+                // to avoid duplicates but allow updating settings if they changed in the export
+                // For now, let's just create if not exists to avoid overwriting existing keys accidentally
+                // OR we can rely on user intent.
+                // Decision: Create new if not exists.
+                
+                $exists = \App\Models\AiConfig::where('provider', $item['provider'])
+                                ->where('model_id', $item['model_id'])
+                                ->exists();
+
+                if (!$exists) {
+                     // Sanitize: ensure no api_key is imported if strictly following "no api keys in export"
+                     // but if user manually added keys to the file, maybe we let them?
+                     // The prompt says "export (no importa que no incluya los api keys)".
+                     // It implies the export file won't have them. 
+                     // We should unset ID just in case.
+                     unset($item['id']);
+                     
+                     // Helper: set default active if missing
+                     if (!isset($item['is_active'])) $item['is_active'] = true;
+
+                     \App\Models\AiConfig::create($item);
+                     $count++;
+                }
+            }
+
+            return back()->with('success', "Imported {$count} configurations.");
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error parsing file: ' . $e->getMessage());
+        }
+    }
 }

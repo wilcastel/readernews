@@ -54,6 +54,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Feed Management
     Route::get('/feeds/manage', [FeedController::class, 'manage'])->name('feeds.manage');
+    Route::get('/feeds/export', [FeedController::class, 'export'])->name('feeds.export');
+    Route::post('/feeds/import', [FeedController::class, 'import'])->name('feeds.import');
     Route::put('/feeds/{feed}/toggle-mode', [FeedController::class, 'toggleMode'])->name('feeds.toggle-mode');
     Route::post('/system/restart-queues', [FeedController::class, 'restartQueues'])->name('system.restart-queues');
 
@@ -90,6 +92,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('prompts', \App\Http\Controllers\PromptController::class)->only(['index', 'store', 'update', 'destroy']);
     
     // AI Configs
+    Route::get('/ai-configs/export', [\App\Http\Controllers\AiConfigController::class, 'export'])->name('ai-configs.export');
+    Route::post('/ai-configs/import', [\App\Http\Controllers\AiConfigController::class, 'import'])->name('ai-configs.import');
     Route::resource('ai-configs', \App\Http\Controllers\AiConfigController::class)->except(['show', 'create', 'edit']);
 });
 

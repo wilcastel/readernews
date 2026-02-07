@@ -8,9 +8,22 @@
                 <h1 class="text-2xl md:text-3xl text-slate-800 dark:text-white font-bold">Manage AI Providers</h1>
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Configure Local and Cloud AI models locally.</p>
             </div>
-            <button onclick="openCreateModal()" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
-                <ion-icon name="add-outline"></ion-icon> Add Provider
-            </button>
+            <div class="flex gap-2">
+                 <a href="{{ route('ai-configs.export') }}" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <ion-icon name="download-outline"></ion-icon> Export
+                </a>
+                <button onclick="document.getElementById('importFile').click()" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <ion-icon name="cloud-upload-outline"></ion-icon> Import
+                </button>
+                <form id="importForm" action="{{ route('ai-configs.import') }}" method="POST" enctype="multipart/form-data" class="hidden">
+                    @csrf
+                    <input type="file" name="file" id="importFile" accept=".json" onchange="document.getElementById('importForm').submit()">
+                </form>
+
+                <button onclick="openCreateModal()" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <ion-icon name="add-outline"></ion-icon> Add Provider
+                </button>
+            </div>
         </div>
 
         <!-- Configurations List -->
