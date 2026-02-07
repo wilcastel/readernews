@@ -229,7 +229,7 @@
                             });
                          
                          // Fetch AI Configs
-                         fetch('{{ route('ai-configs.index') }}', { headers: { 'Accept': 'application/json' } })
+                         fetch('{{ route('ai-configs.index', ['sort' => 'provider', 'active_only' => 1]) }}', { headers: { 'Accept': 'application/json' } })
                             .then(r => r.json())
                             .then(data => this.aiConfigs = data);
                     },

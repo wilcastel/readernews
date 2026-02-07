@@ -26,6 +26,10 @@ class AiConfigController extends Controller
             $query->orderBy('created_at', 'desc');
         }
 
+        if ($request->has('active_only')) {
+            $query->where('is_active', true);
+        }
+
         $configs = $query->get();
         
         if ($request->wantsJson()) {
