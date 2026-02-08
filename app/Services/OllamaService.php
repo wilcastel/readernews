@@ -235,8 +235,9 @@ EOT;
             ]);
 
         if ($response->failed()) {
-            \Log::error('AI API Failed (' . $response->status() . '): ' . $response->body());
-            return '';
+            $errorMsg = 'AI API Failed (' . $response->status() . '): ' . $response->body();
+            \Log::error($errorMsg);
+            throw new \Exception('Provider Error: ' . $response->status() . ' - ' . substr($response->body(), 0, 200));
         }
 
         $json = $response->json();

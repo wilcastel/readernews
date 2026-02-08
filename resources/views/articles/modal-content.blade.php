@@ -128,7 +128,7 @@
             </a>
 
             <!-- AI Writer Button (Modal Version) -->
-            <div class="flex items-center" x-data="{
+            <div x-data="{
                 open: false,
                 generating: false,
                 prompts: [],
@@ -147,7 +147,7 @@
                         });
                      
                      // Fetch AI Configs
-                     fetch('{{ route('ai-configs.index', ['sort' => 'provider', 'active_only' => 1]) }}', { headers: { 'Accept': 'application/json' } })
+                     fetch('{{ route('ai-configs.index') }}', { headers: { 'Accept': 'application/json' } })
                         .then(r => r.json())
                         .then(data => this.aiConfigs = data);
                 },
@@ -166,14 +166,23 @@
                             custom_instructions: this.customInstructions
                         })
                     })
-                    .then(r => r.json())
+                    .then(r => {
+                        if (!r.ok) throw new Error('Network response was not ok');
+                        return r.json();
+                    })
                     .then(data => {
-                        this.generating = false;
                         if(data.success) {
                             this.result = data.content;
                         } else {
-                            alert('Error: ' + data.error);
+                            alert('Error: ' + (data.error || 'Unknown error'));
                         }
+                    })
+                    .catch(e => {
+                        alert('System Error: ' + e.message);
+                        console.error(e);
+                    })
+                    .finally(() => {
+                         this.generating = false;
                     });
                 }
             }">
@@ -203,7 +212,7 @@
                                 <p class="text-surface-600 dark:text-surface-400 mb-6 max-w-md mx-auto">Generate a unique piece based on this source using AI.</p>
                                 
                                 <div class="max-w-sm mx-auto space-y-4 mb-6 text-left">
-                                    <div class="mb-4">
+                                    <div>
                                         <label class="block text-xs font-bold uppercase text-surface-500 mb-1">AI Model Engine</label>
                                         <select x-model="selectedAiConfig" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
                                             <option value="">System Default (Ollama)</option>
@@ -214,23 +223,8 @@
                                                 </template>
                                             </optgroup>
                                         </select>
-                                        
-                                        <!-- Cost Indicator -->
-                                        <div class="mt-2 min-h-[20px]">
-                                            <template x-for="c in aiConfigs" :key="c.id">
-                                                <div x-show="c.id == selectedAiConfig && c.cantaprox > 0" class="inline-block transition-all">
-                                                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md border border-indigo-100 dark:border-indigo-800">
-                                                        💎 ~<span x-text="c.cantaprox"></span> articles / $10
-                                                    </span>
-                                                </div>
-                                            </template>
-                                            <div x-show="selectedAiConfig === 'round-robin' || !selectedAiConfig" class="text-xs text-green-600 dark:text-green-400 font-medium px-1">
-                                                ✅ Free Tier
-                                            </div>
-                                        </div>
                                     </div>
-
-                                    <div class="mb-4">
+                                    <div>
                                         <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Select Prompt</label>
                                         <select x-model="selectedPrompt" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
                                             <template x-for="p in prompts" :key="p.id">
@@ -238,21 +232,15 @@
                                             </template>
                                         </select>
                                     </div>
-
-                                    <div class="mb-6">
-                                         <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Model Description</label>
-                                         <div class="w-full rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-3 min-h-[80px] text-sm text-surface-600 dark:text-surface-300">
-                                            <template x-for="c in aiConfigs" :key="c.id">
-                                                <p x-show="c.id == selectedAiConfig" x-text="c.description || 'No description available for this model.'"></p>
-                                            </template>
-                                            <p x-show="selectedAiConfig === 'round-robin'">Automatically cycles through available free providers to ensure high availability.</p>
-                                            <p x-show="!selectedAiConfig">Standard system default generation.</p>
-                                         </div>
+                                    <div>
+                                         <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Extra Instructions (Optional)</label>
+                                         <textarea x-model="customInstructions" placeholder="e.g. Focus on the positive aspects..." class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm p-2 h-20 placeholder-surface-400"></textarea>
                                     </div>
+                                </div>
 
-                                    <button @click="generate()" class="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary-500/30 hover:-translate-y-1 flex items-center justify-center gap-2">
-                                        <ion-icon name="sparkles"></ion-icon> Generate Rewrite
-                                    </button>
+                                <button @click="generate()" class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary-500/30 hover:-translate-y-1">
+                                    Generate Draft
+                                </button>
                             </div>
                             <div x-show="generating" class="flex flex-col items-center justify-center py-12">
                                 <div class="animate-spin rounded-full h-12 w-12 border-4 border-surface-100 border-t-primary-600 mb-6"></div>
