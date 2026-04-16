@@ -164,7 +164,8 @@
                     document.getElementById('accLabel').value = account.label;
                     document.getElementById('accProvider').value = account.provider;
                     document.getElementById('accEmail').value = account.email || '';
-                    document.getElementById('accApiKey').value = '';
+                    document.getElementById('accApiKey').value = account.api_key || '';
+                    document.getElementById('accApiKey').placeholder = account.api_key ? 'Leave empty to keep: ' + account.api_key : 'sk-...';
                     document.getElementById('accBaseUrl').value = account.base_url || '';
                     document.getElementById('accIsActive').checked = account.is_active;
                 } else {

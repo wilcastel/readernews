@@ -15,10 +15,16 @@ class ProviderAccount extends Model
         'api_key' => 'encrypted',
     ];
 
-    protected $hidden = ['api_key'];
-
     public function aiConfigs()
     {
         return $this->hasMany(AiConfig::class);
+    }
+
+    public function toArray()
+    {
+        $array = parent::toArray();
+        $array['api_key'] = $this->api_key ? str_repeat('•', 8).substr($this->api_key, -4) : null;
+
+        return $array;
     }
 }
