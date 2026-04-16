@@ -13,6 +13,17 @@ class AiConfigController extends Controller
     {
         $query = \App\Models\AiConfig::with('providerAccount');
 
+        // Search filter
+        if ($q = $request->get('q')) {
+            $query->where(function ($qBuilder) use ($q) {
+                $qBuilder->where('name', 'like', "%{$q}%")
+                    ->orWhere('model_id', 'like', "%{$q}%")
+                    ->orWhere('provider', 'like', "%{$q}%")
+                    ->orWhere('description', 'like', "%{$q}%")
+                    ->orWhereHas('providerAccount', fn ($aq) => $aq->where('label', 'like', "%{$q}%"));
+            });
+        }
+
         if ($request->get('sort') === 'provider') {
             $query->orderBy('provider', 'asc')->orderBy('name', 'asc');
         } elseif ($request->get('sort') === 'oldest') {
