@@ -132,9 +132,10 @@
                 open: false,
                 generating: false,
                 prompts: [],
-                aiConfigs: [],
-                selectedPrompt: 1,
-                selectedAiConfig: 'round-robin',
+                 aiConfigs: [],
+                 groupedConfigs: [],
+                 selectedPrompt: 1,
+                 selectedAiConfig: 'round-robin',
                 customInstructions: '',
                 result: '',
                 init() {
@@ -146,10 +147,19 @@
                             if(data.length > 0) this.selectedPrompt = data[0].id;
                         });
                      
-                     // Fetch AI Configs
-                     fetch('{{ route('ai-configs.index') }}', { headers: { 'Accept': 'application/json' } })
-                        .then(r => r.json())
-                        .then(data => this.aiConfigs = data);
+                     // Fetch AI Configs (active only, sorted by provider)
+                      fetch('{{ route('ai-configs.index', ['sort' => 'provider', 'active_only' => 1]) }}', { headers: { 'Accept': 'application/json' } })
+                         .then(r => r.json())
+                         .then(data => {
+                             this.aiConfigs = data;
+                             const groups = {};
+                             data.forEach(c => {
+                                 const key = c.provider;
+                                 if (!groups[key]) groups[key] = [];
+                                 groups[key].push(c);
+                             });
+                             this.groupedConfigs = Object.keys(groups).sort().map(k => ({ provider: k, configs: groups[k] }));
+                         });
                 },
                 generate() {
                     this.generating = true;
@@ -217,11 +227,13 @@
                                         <select x-model="selectedAiConfig" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
                                             <option value="">System Default (Ollama)</option>
                                             <option value="round-robin">🔄 Round Robin (Free Tier)</option>
-                                            <optgroup label="My Providers">
-                                                <template x-for="c in aiConfigs" :key="c.id">
-                                                    <option :value="c.id" x-text="c.name"></option>
-                                                </template>
-                                            </optgroup>
+                                            <template x-for="group in groupedConfigs" :key="group.provider">
+                                                <optgroup :label="group.provider.charAt(0).toUpperCase() + group.provider.slice(1)">
+                                                    <template x-for="c in group.configs" :key="c.id">
+                                                        <option :value="c.id" x-text="c.name"></option>
+                                                    </template>
+                                                </optgroup>
+                                            </template>
                                         </select>
                                     </div>
                                     <div>
