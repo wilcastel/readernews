@@ -27,6 +27,10 @@
                  <a href="{{ route('ai-configs.export') }}" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
                     <ion-icon name="download-outline"></ion-icon> Export
                 </a>
+                <a href="{{ route('provider-accounts.index') }}" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <ion-icon name="key-outline"></ion-icon> API Keys
+                </a>
+
                 <button onclick="document.getElementById('importFile').click()" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
                     <ion-icon name="cloud-upload-outline"></ion-icon> Import
                 </button>
@@ -57,8 +61,11 @@
                             @endif
                          </div>
                          <div>
-                             <h3 class="font-bold text-slate-800 dark:text-white">{{ $config->name }}</h3>
-                             <p class="text-xs text-slate-500 font-mono">{{ $config->model_id }}</p>
+                              <h3 class="font-bold text-slate-800 dark:text-white">{{ $config->name }}</h3>
+                              <p class="text-xs text-slate-500 font-mono">{{ $config->model_id }}</p>
+                              @if($config->providerAccount)
+                                  <p class="text-xs text-indigo-500 mt-0.5"><ion-icon name="key-outline" class="align-middle text-[10px]"></ion-icon> {{ $config->providerAccount->label }}</p>
+                              @endif
                          </div>
                     </div>
                     
@@ -173,14 +180,14 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Base URL (Optional)</label>
-                            <input type="url" name="base_url" id="inputBaseUrl" placeholder="https://api.groq.com/openai/v1" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
-                            <p class="text-xs text-slate-500 mt-1">Leave empty for standard endpoints (e.g. if using OpenRouter provider).</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">API Key</label>
-                            <input type="password" name="api_key" id="inputApiKey" placeholder="sk-..." class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">API Account</label>
+                            <select name="provider_account_id" id="inputAccountId" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white p-2 text-sm">
+                                <option value="">-- No API Key (use defaults) --</option>
+                                @foreach(\App\Models\ProviderAccount::where('is_active', true)->orderBy('provider')->orderBy('label')->get() as $acc)
+                                    <option value="{{ $acc->id }}" data-provider="{{ $acc->provider }}">{{ $acc->label }} ({{ $acc->provider }})</option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Select which API key this model uses. <a href="{{ route('provider-accounts.index') }}" class="text-indigo-600 hover:underline">Manage keys &rarr;</a></p>
                         </div>
 
                          <div class="flex items-center gap-2">
@@ -245,8 +252,7 @@
                 document.getElementById('inputProvider').value = config.provider;
                 document.getElementById('inputMode').value = config.mode;
                 document.getElementById('inputModelId').value = config.model_id;
-                document.getElementById('inputBaseUrl').value = config.base_url || '';
-                document.getElementById('inputApiKey').value = config.api_key || ''; // Might be hidden in real app
+                document.getElementById('inputAccountId').value = config.provider_account_id || '';
                 document.getElementById('inputIsActive').checked = config.is_active;
 
                 // New fields

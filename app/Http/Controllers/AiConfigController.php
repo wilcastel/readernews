@@ -11,7 +11,7 @@ class AiConfigController extends Controller
      */
     public function index(Request $request)
     {
-        $query = \App\Models\AiConfig::query();
+        $query = \App\Models\AiConfig::with('providerAccount');
 
         if ($request->get('sort') === 'provider') {
             $query->orderBy('provider', 'asc')->orderBy('name', 'asc');
@@ -20,9 +20,8 @@ class AiConfigController extends Controller
         } elseif ($request->get('sort') === 'free_first') {
             $query->orderBy('mode', 'asc')->orderBy('name', 'asc');
         } elseif ($request->get('sort') === 'paid_first') {
-            $query->orderBy('mode', 'desc')->orderBy('name', 'asc'); // Paid > Local > Free
+            $query->orderBy('mode', 'desc')->orderBy('name', 'asc');
         } else {
-            // Default: Newest first
             $query->orderBy('created_at', 'desc');
         }
 
@@ -31,19 +30,12 @@ class AiConfigController extends Controller
         }
 
         $configs = $query->get();
-        
+
         if ($request->wantsJson()) {
             return response()->json($configs);
         }
 
-        // Return view for settings page (we might need to merge this into SettingsController index logic later, 
-        // but for now let's assume we render a partial or view)
-        // Actually, user wants "a place where manage IAs".
-        // Let's create a dedicated view or assume it will be included in Settings.
-        // For simplicity, let's keep it API-centric for the interactions we've built (AJAX in Settings).
-        // But since we are creating a whole CRUD, let's return a view 'ai_configs.index' or redirect back.
-        
-        return view('settings.ai_configs', compact('configs')); 
+        return view('settings.ai_configs', compact('configs'));
     }
 
     public function store(Request $request)
@@ -51,25 +43,22 @@ class AiConfigController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'provider' => 'required|string',
-            'base_url' => 'nullable|url',
-            'api_key' => 'nullable|string',
             'model_id' => 'required|string',
             'mode' => 'required|in:local,paid,free',
+            'provider_account_id' => 'nullable|exists:provider_accounts,id',
             'input_price' => 'nullable|numeric|min:0',
             'output_price' => 'nullable|numeric|min:0',
             'cantaprox' => 'nullable|integer|min:0',
-            'description' => 'nullable|string'
+            'description' => 'nullable|string',
         ]);
-        
-        // Defaults
+
         $validated['is_active'] = $request->has('is_active') || $request->is_active === 'true';
 
-        // Auto-calculate approximate usage if prices are present AND mode is paid
         if ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
-             $calculated = $this->calculateApproximateUsage($validated['input_price'], $validated['output_price']);
-             if (empty($validated['cantaprox'])) {
-                 $validated['cantaprox'] = $calculated;
-             }
+            $calculated = $this->calculateApproximateUsage($validated['input_price'], $validated['output_price']);
+            if (empty($validated['cantaprox'])) {
+                $validated['cantaprox'] = $calculated;
+            }
         }
 
         \App\Models\AiConfig::create($validated);
@@ -77,28 +66,26 @@ class AiConfigController extends Controller
         return redirect()->back()->with('success', 'AI Provider added.');
     }
 
-    public function update(Request $request, \App\Models\AiConfig $aiConfig) // Ensure variable name matches
+    public function update(Request $request, \App\Models\AiConfig $aiConfig)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'provider' => 'required|string',
-            'base_url' => 'nullable|url',
-            'api_key' => 'nullable|string',
             'model_id' => 'required|string',
             'mode' => 'required|in:local,paid,free',
+            'provider_account_id' => 'nullable|exists:provider_accounts,id',
             'input_price' => 'nullable|numeric|min:0',
             'output_price' => 'nullable|numeric|min:0',
             'cantaprox' => 'nullable|integer|min:0',
-            'description' => 'nullable|string'
+            'description' => 'nullable|string',
         ]);
 
         $validated['is_active'] = $request->has('is_active');
 
-        // Auto-calculate approximate usage if prices are updated and cantaprox is empty AND mode is paid
         if ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
-             if (empty($validated['cantaprox'])) {
-                 $validated['cantaprox'] = $this->calculateApproximateUsage($validated['input_price'], $validated['output_price']);
-             }
+            if (empty($validated['cantaprox'])) {
+                $validated['cantaprox'] = $this->calculateApproximateUsage($validated['input_price'], $validated['output_price']);
+            }
         }
 
         $aiConfig->update($validated);
@@ -116,11 +103,15 @@ class AiConfigController extends Controller
         $avgOutputTokens = 800;
 
         // Prevent division by zero
-        if ($inputPrice <= 0 && $outputPrice <= 0) return 0;
+        if ($inputPrice <= 0 && $outputPrice <= 0) {
+            return 0;
+        }
 
         $costPerUse = ($inputPrice * $avgInputTokens / 1000000) + ($outputPrice * $avgOutputTokens / 1000000);
 
-        if ($costPerUse <= 0) return 0;
+        if ($costPerUse <= 0) {
+            return 0;
+        }
 
         return floor($budget / $costPerUse);
     }
@@ -128,17 +119,45 @@ class AiConfigController extends Controller
     public function destroy(\App\Models\AiConfig $aiConfig)
     {
         $aiConfig->delete();
+
         return redirect()->back()->with('success', 'AI Provider deleted.');
     }
 
     public function export()
     {
-        $configs = \App\Models\AiConfig::all()->makeHidden(['api_key', 'created_at', 'updated_at', 'id']);
-        
-        $filename = 'ai-configs-' . date('Y-m-d') . '.json';
-        
-        return response()->streamDownload(function () use ($configs) {
-            echo $configs->toJson(JSON_PRETTY_PRINT);
+        $accounts = \App\Models\ProviderAccount::all()->map(fn ($a) => [
+            'provider' => $a->provider,
+            'label' => $a->label,
+            'email' => $a->email,
+            'api_key' => $a->api_key,
+            'base_url' => $a->base_url,
+            'is_active' => $a->is_active,
+        ]);
+
+        $configs = \App\Models\AiConfig::with('providerAccount')->get()->map(fn ($c) => [
+            'name' => $c->name,
+            'provider' => $c->provider,
+            'model_id' => $c->model_id,
+            'mode' => $c->mode,
+            'is_active' => $c->is_active,
+            'input_price' => $c->input_price,
+            'output_price' => $c->output_price,
+            'cantaprox' => $c->cantaprox,
+            'description' => $c->description,
+            'account_label' => $c->providerAccount?->label,
+        ]);
+
+        $payload = [
+            'version' => 2,
+            'exported_at' => now()->toIso8601String(),
+            'provider_accounts' => $accounts,
+            'ai_configs' => $configs,
+        ];
+
+        $filename = 'ai-configs-'.date('Y-m-d').'.json';
+
+        return response()->streamDownload(function () use ($payload) {
+            echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         }, $filename, [
             'Content-Type' => 'application/json',
         ]);
@@ -154,46 +173,122 @@ class AiConfigController extends Controller
             $json = file_get_contents($request->file('file')->getRealPath());
             $data = json_decode($json, true);
 
-            if (!is_array($data)) {
+            if (! is_array($data)) {
                 return back()->with('error', 'Invalid JSON format.');
             }
 
-            $count = 0;
-            foreach ($data as $item) {
-                // strict validation could be done here similar to store()
-                if (empty($item['model_id']) || empty($item['provider'])) {
-                    continue; // Skip invalid entries
-                }
-                
-                // Allow "update or create" logic based on model_id + provider
-                // to avoid duplicates but allow updating settings if they changed in the export
-                // For now, let's just create if not exists to avoid overwriting existing keys accidentally
-                // OR we can rely on user intent.
-                // Decision: Create new if not exists.
-                
-                $exists = \App\Models\AiConfig::where('provider', $item['provider'])
-                                ->where('model_id', $item['model_id'])
-                                ->exists();
+            $accountMap = [];
+            $accountsImported = 0;
+            $configsImported = 0;
 
-                if (!$exists) {
-                     // Sanitize: ensure no api_key is imported if strictly following "no api keys in export"
-                     // but if user manually added keys to the file, maybe we let them?
-                     // The prompt says "export (no importa que no incluya los api keys)".
-                     // It implies the export file won't have them. 
-                     // We should unset ID just in case.
-                     unset($item['id']);
-                     
-                     // Helper: set default active if missing
-                     if (!isset($item['is_active'])) $item['is_active'] = true;
+            if (isset($data['version']) && $data['version'] === 2) {
+                foreach ($data['provider_accounts'] ?? [] as $item) {
+                    if (empty($item['provider']) || empty($item['label'])) {
+                        continue;
+                    }
 
-                     \App\Models\AiConfig::create($item);
-                     $count++;
+                    $account = \App\Models\ProviderAccount::firstOrCreate(
+                        ['provider' => $item['provider'], 'label' => $item['label']],
+                        [
+                            'email' => $item['email'] ?? null,
+                            'api_key' => $item['api_key'] ?? null,
+                            'base_url' => $item['base_url'] ?? null,
+                            'is_active' => $item['is_active'] ?? true,
+                        ]
+                    );
+
+                    if (! empty($item['api_key']) && empty($account->api_key)) {
+                        $account->update(['api_key' => $item['api_key']]);
+                    }
+
+                    $accountMap[$item['label']] = $account->id;
+                    $accountsImported++;
                 }
+
+                foreach ($data['ai_configs'] ?? [] as $item) {
+                    if (empty($item['model_id']) || empty($item['provider'])) {
+                        continue;
+                    }
+
+                    $exists = \App\Models\AiConfig::where('provider', $item['provider'])
+                        ->where('model_id', $item['model_id'])
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
+                    }
+
+                    $accountLabel = $item['account_label'] ?? null;
+                    unset($item['account_label'], $item['id']);
+
+                    if (! isset($item['is_active'])) {
+                        $item['is_active'] = true;
+                    }
+
+                    if ($accountLabel && isset($accountMap[$accountLabel])) {
+                        $item['provider_account_id'] = $accountMap[$accountLabel];
+                    }
+
+                    \App\Models\AiConfig::create($item);
+                    $configsImported++;
+                }
+            } else {
+                foreach ($data as $item) {
+                    if (empty($item['model_id']) || empty($item['provider'])) {
+                        continue;
+                    }
+
+                    $exists = \App\Models\AiConfig::where('provider', $item['provider'])
+                        ->where('model_id', $item['model_id'])
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
+                    }
+
+                    $apiKey = $item['api_key'] ?? null;
+                    $baseUrl = $item['base_url'] ?? null;
+                    unset($item['id'], $item['api_key'], $item['base_url'], $item['created_at'], $item['updated_at']);
+
+                    if (! isset($item['is_active'])) {
+                        $item['is_active'] = true;
+                    }
+
+                    if ($apiKey || $baseUrl) {
+                        $account = \App\Models\ProviderAccount::firstOrCreate(
+                            [
+                                'provider' => $item['provider'],
+                                'base_url' => $baseUrl ?? $this->defaultBaseUrl($item['provider']),
+                            ],
+                            [
+                                'label' => ucfirst($item['provider']).' Account (imported)',
+                                'api_key' => $apiKey,
+                                'is_active' => true,
+                            ]
+                        );
+                        $item['provider_account_id'] = $account->id;
+                    }
+
+                    \App\Models\AiConfig::create($item);
+                    $configsImported++;
+                }
+
+                return back()->with('success', "Imported {$configsImported} configs (legacy format).");
             }
 
-            return back()->with('success', "Imported {$count} configurations.");
+            return back()->with('success', "Imported {$accountsImported} API accounts and {$configsImported} AI configs.");
         } catch (\Exception $e) {
-            return back()->with('error', 'Error parsing file: ' . $e->getMessage());
+            return back()->with('error', 'Error parsing file: '.$e->getMessage());
         }
+    }
+
+    private function defaultBaseUrl(string $provider): ?string
+    {
+        return match ($provider) {
+            'openrouter' => 'https://openrouter.ai/api/v1/chat/completions',
+            'opencode-zen' => 'https://opencode.ai/zen/v1',
+            'opencode-go' => 'https://opencode.ai/zen/go/v1',
+            default => null,
+        };
     }
 }
