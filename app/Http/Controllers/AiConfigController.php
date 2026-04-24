@@ -32,6 +32,8 @@ class AiConfigController extends Controller
             $query->orderBy('mode', 'asc')->orderBy('name', 'asc');
         } elseif ($request->get('sort') === 'paid_first') {
             $query->orderBy('mode', 'desc')->orderBy('name', 'asc');
+        } elseif ($request->get('sort') === 'most_efficient') {
+            $query->orderBy('cantaprox', 'desc');
         } else {
             $query->orderBy('created_at', 'desc');
         }
@@ -66,7 +68,9 @@ class AiConfigController extends Controller
         $validated['is_active'] = $request->has('is_active') || $request->is_active === 'true';
         $validated['use_for_scraping'] = $request->has('use_for_scraping') || $request->use_for_scraping === 'true';
 
-        if ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
+        if ($validated['mode'] === 'free' && empty($validated['cantaprox'])) {
+            $validated['cantaprox'] = 100000;
+        } elseif ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
             $calculated = $this->calculateApproximateUsage($validated['input_price'], $validated['output_price']);
             if (empty($validated['cantaprox'])) {
                 $validated['cantaprox'] = $calculated;
@@ -95,7 +99,9 @@ class AiConfigController extends Controller
         $validated['is_active'] = $request->has('is_active');
         $validated['use_for_scraping'] = $request->has('use_for_scraping');
 
-        if ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
+        if ($validated['mode'] === 'free' && empty($validated['cantaprox'])) {
+            $validated['cantaprox'] = 100000;
+        } elseif ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
             if (empty($validated['cantaprox'])) {
                 $validated['cantaprox'] = $this->calculateApproximateUsage($validated['input_price'], $validated['output_price']);
             }

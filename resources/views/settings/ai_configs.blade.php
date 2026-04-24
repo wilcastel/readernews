@@ -34,6 +34,7 @@
                         <div class="border-t border-slate-200 dark:border-surface-700 my-1"></div>
                         <a href="?sort=free_first" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 {{ request('sort') == 'free_first' ? 'font-bold text-green-600' : '' }}">Free / Local First</a>
                         <a href="?sort=paid_first" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 {{ request('sort') == 'paid_first' ? 'font-bold text-yellow-600' : '' }}">Paid First</a>
+                        <a href="?sort=most_efficient" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 {{ request('sort') == 'most_efficient' ? 'font-bold text-indigo-600' : '' }}">💎 Most Efficient</a>
                     </div>
                 </div>
                  <a href="{{ route('ai-configs.export') }}" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
@@ -280,8 +281,12 @@
                 const mode = document.getElementById('inputMode').value;
                 const approxField = document.getElementById('inputCantAprox');
 
+                if (mode === 'free') {
+                    approxField.value = 100000;
+                    return;
+                }
                 if (mode !== 'paid') {
-                    approxField.value = ''; 
+                    approxField.value = '';
                     return;
                 }
 
