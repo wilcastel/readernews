@@ -32,10 +32,8 @@ class AiConfigController extends Controller
             $query->orderBy('mode', 'asc')->orderBy('name', 'asc');
         } elseif ($request->get('sort') === 'paid_first') {
             $query->orderBy('mode', 'desc')->orderBy('name', 'asc');
-        } elseif ($request->get('sort') === 'most_efficient') {
-            $query->orderBy('cantaprox', 'desc');
         } else {
-            $query->orderBy('created_at', 'desc');
+            $query->orderBy('cantaprox', 'desc');
         }
 
         if ($request->has('active_only')) {
