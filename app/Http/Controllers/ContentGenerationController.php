@@ -60,14 +60,12 @@ class ContentGenerationController extends Controller
         if ($request->filled('ai_config_id')) {
             if ($request->ai_config_id === 'round-robin') {
                 $isRoundRobin = true;
-                // Get ALL active free providers, shuffle them
-                $configsToTry = \App\Models\AiConfig::where('mode', 'free')
-                    ->where('is_active', true)
+                $configsToTry = \App\Models\AiConfig::where('is_active', true)
                     ->inRandomOrder()
                     ->get();
-                
+
                 if ($configsToTry->isEmpty()) {
-                    \Log::warning("Round Robin requested but no active 'free' providers found to cycle through.");
+                    \Log::warning("Round Robin requested but no active providers found to cycle through.");
                 }
             } elseif (is_numeric($request->ai_config_id)) {
                 $config = \App\Models\AiConfig::where('id', $request->ai_config_id)
