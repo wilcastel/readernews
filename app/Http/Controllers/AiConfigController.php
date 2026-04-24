@@ -64,6 +64,7 @@ class AiConfigController extends Controller
         ]);
 
         $validated['is_active'] = $request->has('is_active') || $request->is_active === 'true';
+        $validated['use_for_scraping'] = $request->has('use_for_scraping') || $request->use_for_scraping === 'true';
 
         if ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
             $calculated = $this->calculateApproximateUsage($validated['input_price'], $validated['output_price']);
@@ -92,6 +93,7 @@ class AiConfigController extends Controller
         ]);
 
         $validated['is_active'] = $request->has('is_active');
+        $validated['use_for_scraping'] = $request->has('use_for_scraping');
 
         if ($validated['mode'] === 'paid' && isset($validated['input_price']) && isset($validated['output_price'])) {
             if (empty($validated['cantaprox'])) {

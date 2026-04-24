@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class AiConfig extends Model
 {
     protected $fillable = [
-        'name', 'provider', 'base_url', 'api_key', 'model_id', 'is_active', 'mode',
+        'name', 'provider', 'base_url', 'api_key', 'model_id', 'is_active', 'use_for_scraping', 'mode',
         'input_price', 'output_price', 'description', 'cantaprox', 'provider_account_id',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'use_for_scraping' => 'boolean',
         'api_key' => 'encrypted',
         'input_price' => 'decimal:8',
         'output_price' => 'decimal:8',

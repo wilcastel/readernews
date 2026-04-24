@@ -115,6 +115,11 @@
                     <span class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 {{ $config->is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200' }}">
                         {{ $config->is_active ? 'Active' : 'Inactive' }}
                     </span>
+                    @if($config->use_for_scraping)
+                    <span class="px-2 py-1 rounded-md border bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 text-xs font-semibold" title="Used for AI Scraping">
+                        🕷 Scraper
+                    </span>
+                    @endif
                 </div>
             </div>
             @empty
@@ -208,9 +213,15 @@
                             <p class="text-xs text-slate-500 mt-1">Select which API key this model uses. <a href="{{ route('provider-accounts.index') }}" class="text-indigo-600 hover:underline">Manage keys &rarr;</a></p>
                         </div>
 
-                         <div class="flex items-center gap-2">
-                             <input type="checkbox" name="is_active" id="inputIsActive" value="1" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                             <label for="inputIsActive" class="text-sm font-medium text-slate-700 dark:text-slate-300">Enabled</label>
+                         <div class="flex items-center gap-6">
+                             <div class="flex items-center gap-2">
+                                 <input type="checkbox" name="is_active" id="inputIsActive" value="1" checked class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                                 <label for="inputIsActive" class="text-sm font-medium text-slate-700 dark:text-slate-300">Enabled</label>
+                             </div>
+                             <div class="flex items-center gap-2">
+                                 <input type="checkbox" name="use_for_scraping" id="inputUseForScraping" value="1" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                 <label for="inputUseForScraping" class="text-sm font-medium text-slate-700 dark:text-slate-300">🕷 Use for AI Scraping</label>
+                             </div>
                          </div>
                     </div>
 
@@ -310,6 +321,7 @@
                 document.getElementById('inputModelId').value = config.model_id;
                 document.getElementById('inputAccountId').value = config.provider_account_id || '';
                 document.getElementById('inputIsActive').checked = config.is_active;
+                document.getElementById('inputUseForScraping').checked = config.use_for_scraping;
 
                 // New fields
                 document.getElementById('inputInputPrice').value = config.input_price || '';

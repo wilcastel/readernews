@@ -52,19 +52,23 @@ class OllamaService
 
     public function extractArticlesFromHtml(string $html, ?string $selector = null, string $appLabel = 'ReaderNews-AS'): array
     {
-        // SMART FALLBACK: If we are using default Ollama (local) but have Remote Configs active in DB,
-        // switch to one of them to ensure this works on Remote Servers where localhost:11434 is missing.
-        if ($this->provider === 'ollama' || $this->baseUrl === 'http://localhost:11434') {
-            $remoteConfig = \App\Models\AiConfig::where('is_active', true)
-                ->where('provider', '!=', 'ollama')
-                ->where('mode', '!=', 'local') // Explicitly avoid local modes
-                ->inRandomOrder() // Simple load balancing if multiple exist
-                ->first();
+        // Pick scraping provider: prefer configs designated for scraping, fallback to any active remote.
+        $scrapingConfig = \App\Models\AiConfig::where('is_active', true)
+            ->where('use_for_scraping', true)
+            ->inRandomOrder()
+            ->first();
 
-            if ($remoteConfig) {
-                \Log::info('Switching AI Provider for extraction: Local -> '.$remoteConfig->name);
-                $this->useConfig($remoteConfig);
-            }
+        if (! $scrapingConfig && ($this->provider === 'ollama' || $this->baseUrl === 'http://localhost:11434')) {
+            $scrapingConfig = \App\Models\AiConfig::where('is_active', true)
+                ->where('provider', '!=', 'ollama')
+                ->where('mode', '!=', 'local')
+                ->inRandomOrder()
+                ->first();
+        }
+
+        if ($scrapingConfig) {
+            \Log::info('Scraping provider: '.$scrapingConfig->name);
+            $this->useConfig($scrapingConfig);
         }
         // 1. Clean HTML to reduce token usage
         $cleanHtml = $this->cleanHtmlForContext($html, $selector);
