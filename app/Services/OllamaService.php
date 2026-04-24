@@ -50,7 +50,7 @@ class OllamaService
         }
     }
 
-    public function extractArticlesFromHtml(string $html, ?string $selector = null): array
+    public function extractArticlesFromHtml(string $html, ?string $selector = null, string $appLabel = 'ReaderNews-AS'): array
     {
         // SMART FALLBACK: If we are using default Ollama (local) but have Remote Configs active in DB,
         // switch to one of them to ensure this works on Remote Servers where localhost:11434 is missing.
@@ -90,7 +90,7 @@ EOT;
 
             // Check provider again after potential swap
             if ($this->provider === 'openrouter' || $this->provider === 'openai' || $this->provider === 'groq' || $this->provider === 'cerebras') {
-                $responseText = $this->askOpenAICompatible($prompt);
+                $responseText = $this->askOpenAICompatible($prompt, '', '', '', $appLabel);
             } else {
                 $responseText = $this->askOllamaBridge($prompt);
             }
@@ -123,7 +123,7 @@ EOT;
         }
     }
 
-    public function generateText(string $prompt, ?\App\Models\AiConfig $config = null): string
+    public function generateText(string $prompt, ?\App\Models\AiConfig $config = null, string $appLabel = ''): string
     {
         // 1. Determine parameters (Default vs Config)
         $provider = $this->provider;
@@ -150,7 +150,7 @@ EOT;
 
         // 2. Dispatch
         if ($provider === 'openrouter' || $provider === 'openai') {
-            return $this->askOpenAICompatible($prompt, $baseUrl, $apiKey, $model);
+            return $this->askOpenAICompatible($prompt, $baseUrl, $apiKey, $model, $appLabel);
         } else {
             // Ollama: we need to pass the custom URL if it's different,
             // but the bridge script currently reads ENV or uses default.
@@ -208,7 +208,7 @@ EOT;
         return $jsonResponse['response'] ?? '';
     }
 
-    protected function askOpenAICompatible(string $prompt, string $url = '', string $key = '', string $model = ''): string
+    protected function askOpenAICompatible(string $prompt, string $url = '', string $key = '', string $model = '', string $appLabel = ''): string
     {
         // Fallbacks to instance defaults
         $url = $url ?: $this->baseUrl;
@@ -229,7 +229,7 @@ EOT;
         $response = Http::withToken($key)
             ->withHeaders([
                 'HTTP-Referer' => config('app.url'),
-                'X-Title' => config('app.name'),
+                'X-Title' => $appLabel ?: config('app.name'),
             ])
             ->timeout(120)
             ->post($url, [

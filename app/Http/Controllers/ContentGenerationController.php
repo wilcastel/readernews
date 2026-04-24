@@ -92,7 +92,7 @@ class ContentGenerationController extends Controller
                  $providerName = $config ? $config->name : 'System Default';
                  \Log::info("Attempting generation with provider: {$providerName}");
 
-                 $responseContent = $this->ollama->generateText($finalPrompt, $config);
+                 $responseContent = $this->ollama->generateText($finalPrompt, $config, 'ReaderNews-RW');
                  
                  if (!empty($responseContent)) {
                      $success = true;
