@@ -229,7 +229,7 @@ EOT;
         $response = Http::withToken($key)
             ->withHeaders([
                 'HTTP-Referer' => config('app.url'),
-                'X-Title' => $appLabel ?: config('app.name'),
+                'X-Title' => ($appLabel ?: config('app.name')) . (app()->isProduction() ? '' : '-' . app()->environment()),
             ])
             ->timeout(120)
             ->post($url, [
