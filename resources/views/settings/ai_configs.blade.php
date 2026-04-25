@@ -21,6 +21,11 @@
                     <span>Active only</span>
                 </label>
 
+                <!-- Provider Filter -->
+                <select id="providerFilter" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-shadow">
+                    <option value="">All providers</option>
+                </select>
+
                 <!-- Sort Dropdown -->
                 <div x-data="{ open: false }" class="relative">
                     <button @click="open = !open" @click.outside="open = false" class="bg-white dark:bg-surface-800 border border-slate-200 dark:border-surface-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
@@ -238,13 +243,24 @@
             // --- Search + Filter ---
             const searchInput = document.getElementById('searchInput');
             const hideInactive = document.getElementById('hideInactive');
+            const providerFilter = document.getElementById('providerFilter');
             const configCards = document.querySelectorAll('[data-config-card]');
             const noResults = document.getElementById('noResults');
             let searchTimeout;
 
+            // Populate provider filter from existing cards
+            const providers = [...new Set([...configCards].map(c => c.dataset.provider).filter(Boolean))].sort();
+            providers.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p.charAt(0).toUpperCase() + p.slice(1);
+                providerFilter.appendChild(opt);
+            });
+
             function applyFilters() {
                 const q = searchInput.value.toLowerCase().trim();
                 const onlyActive = hideInactive.checked;
+                const selectedProvider = providerFilter.value;
                 let visible = 0;
 
                 configCards.forEach(card => {
@@ -256,13 +272,14 @@
 
                     const textMatch = !q || name.includes(q) || model.includes(q) || provider.includes(q) || account.includes(q);
                     const activeMatch = !onlyActive || isActive;
+                    const providerMatch = !selectedProvider || card.dataset.provider === selectedProvider;
 
-                    const show = textMatch && activeMatch;
+                    const show = textMatch && activeMatch && providerMatch;
                     card.style.display = show ? '' : 'none';
                     if (show) visible++;
                 });
 
-                const hasQuery = q || onlyActive;
+                const hasQuery = q || onlyActive || selectedProvider;
                 noResults.style.display = visible === 0 && hasQuery ? 'flex' : 'none';
             }
 
@@ -272,6 +289,7 @@
             });
 
             hideInactive.addEventListener('change', applyFilters);
+            providerFilter.addEventListener('change', applyFilters);
 
             function closeModal() {
                 document.getElementById('createModal').style.display = 'none';
