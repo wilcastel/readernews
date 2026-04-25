@@ -242,6 +242,7 @@ EOT;
                     ['role' => 'user', 'content' => $prompt],
                 ],
                 'temperature' => 0.1,
+                'stream' => false,
             ]);
 
         if ($response->failed()) {
