@@ -382,6 +382,7 @@
                     fetch('{{ route('ai.generate') }}', {
                         method: 'POST',
                         headers: {
+                            'Accept': 'application/json',
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
@@ -392,14 +393,23 @@
                             custom_instructions: this.customInstructions
                         })
                     })
-                    .then(r => r.json())
+                    .then(async r => {
+                        const data = await r.json();
+                        if (!r.ok) throw new Error(data.message || data.error || 'Server Error');
+                        return data;
+                    })
                     .then(data => {
                         this.generating = false;
                         if(data.success) {
                             this.result = data.content;
                         } else {
-                            alert('Error: ' + data.error);
+                            alert('Error: ' + (data.error || 'Unknown error'));
                         }
+                    })
+                    .catch(e => {
+                        this.generating = false;
+                        alert('System Error: ' + e.message);
+                        console.error(e);
                     });
                 }
              }">

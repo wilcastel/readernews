@@ -115,6 +115,11 @@ class FeedController extends Controller
         
         \App\Jobs\FetchFeedArticles::dispatch($feed);
         
+        if (app()->environment('local') && config('queue.default') === 'database') {
+            $artisan = base_path('artisan');
+            exec("php {$artisan} queue:work --stop-when-empty > /dev/null 2>&1 &");
+        }
+        
         // Determine where to redirect based on the referer
         $referer = request()->headers->get('referer');
         if ($referer && str_contains($referer, '/feed/')) {
@@ -258,6 +263,12 @@ class FeedController extends Controller
             \App\Jobs\FetchFeedArticles::dispatch($feed);
         }
         
+        // En local, iniciar el worker en segundo plano para procesar la cola de inmediato
+        if (app()->environment('local') && config('queue.default') === 'database') {
+            $artisan = base_path('artisan');
+            exec("php {$artisan} queue:work --stop-when-empty > /dev/null 2>&1 &");
+        }
+        
         return redirect()->route('dashboard')->with('success', 'Refreshing all ' . $feeds->count() . ' feeds...');
     }
 
@@ -291,6 +302,11 @@ class FeedController extends Controller
 
         // Fetch articles immediately
         \App\Jobs\FetchFeedArticles::dispatch($feed);
+
+        if (app()->environment('local') && config('queue.default') === 'database') {
+            $artisan = base_path('artisan');
+            exec("php {$artisan} queue:work --stop-when-empty > /dev/null 2>&1 &");
+        }
 
         return back()->with('success', 'Added ' . $feed->name . ' to your library.');
     }

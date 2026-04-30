@@ -163,30 +163,32 @@
                 },
                 generate() {
                     this.generating = true;
-                    fetch('{{ route('ai.generate') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({
-                            article_id: {{ $article->id }},
-                            prompt_id: this.selectedPrompt,
-                            ai_config_id: this.selectedAiConfig,
-                            custom_instructions: this.customInstructions
+                        fetch('{{ route('ai.generate') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                article_id: {{ $article->id }},
+                                prompt_id: this.selectedPrompt,
+                                ai_config_id: this.selectedAiConfig,
+                                custom_instructions: this.customInstructions
+                            })
                         })
-                    })
-                    .then(r => {
-                        if (!r.ok) throw new Error('Network response was not ok');
-                        return r.json();
-                    })
-                    .then(data => {
-                        if(data.success) {
-                            this.result = data.content;
-                        } else {
-                            alert('Error: ' + (data.error || 'Unknown error'));
-                        }
-                    })
+                        .then(async r => {
+                            const data = await r.json();
+                            if (!r.ok) throw new Error(data.message || data.error || 'Server Error');
+                            return data;
+                        })
+                        .then(data => {
+                            if(data.success) {
+                                this.result = data.content;
+                            } else {
+                                alert('Error: ' + (data.error || 'Unknown error'));
+                            }
+                        })
                     .catch(e => {
                         alert('System Error: ' + e.message);
                         console.error(e);

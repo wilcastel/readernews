@@ -12,8 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Use raw SQL to avoid dependency on doctrine/dbal
-        DB::statement('ALTER TABLE ai_configs MODIFY api_key TEXT NULL');
+        Schema::table('ai_configs', function (Blueprint $table) {
+            $table->text('api_key')->nullable()->change();
+        });
     }
 
     /**
@@ -21,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE ai_configs MODIFY api_key VARCHAR(255) NULL');
+        Schema::table('ai_configs', function (Blueprint $table) {
+            $table->string('api_key', 255)->nullable()->change();
+        });
     }
 };
