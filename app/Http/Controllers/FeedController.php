@@ -411,4 +411,90 @@ class FeedController extends Controller
             return back()->with('error', 'Failed to restart queues: ' . $e->getMessage());
         }
     }
+
+    public function export()
+    {
+        $feeds = auth()->user()->feeds()->with('folder')->get()->map(function($feed) {
+            return [
+                'url' => $feed->url,
+                'name' => $feed->name,
+                'website_url' => $feed->website_url,
+                'is_rss' => $feed->is_rss,
+                'selector' => $feed->selector,
+                'folder_name' => $feed->folder ? $feed->folder->name : null,
+                // Add other transferable settings
+            ];
+        });
+
+        $filename = 'feeds-export-' . date('Y-m-d') . '.json';
+        
+        return response()->streamDownload(function () use ($feeds) {
+            echo $feeds->toJson(JSON_PRETTY_PRINT);
+        }, $filename, [
+            'Content-Type' => 'application/json',
+        ]);
+    }
+
+    public function import(Request $request) 
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:json',
+        ]);
+
+        try {
+            $json = file_get_contents($request->file('file')->getRealPath());
+            $data = json_decode($json, true);
+
+            if (!is_array($data)) {
+                return back()->with('error', 'Invalid JSON format.');
+            }
+
+            $count = 0;
+            $user = auth()->user();
+
+            foreach ($data as $item) {
+                if (empty($item['url'])) continue;
+
+                // Handle Folder
+                $folderId = null;
+                if (!empty($item['folder_name'])) {
+                    $folder = $user->folders()->firstOrCreate([
+                        'name' => $item['folder_name'],
+                        'user_id' => $user->id // Ensure folder is scoped to user
+                    ]);
+                    $folderId = $folder->id;
+                }
+
+                // Create or Find Feed
+                $feed = \App\Models\Feed::where('user_id', $user->id)
+                            ->where('url', $item['url'])
+                            ->first();
+
+                if (!$feed) {
+                    $feed = \App\Models\Feed::create([
+                        'user_id' => $user->id,
+                        'url' => $item['url'],
+                        'name' => $item['name'] ?? 'Imported Feed',
+                        'website_url' => $item['website_url'] ?? null,
+                        'is_rss' => $item['is_rss'] ?? true, 
+                        'selector' => $item['selector'] ?? null,
+                        'folder_id' => $folderId
+                    ]);
+                    $count++;
+                    
+                    \App\Jobs\FetchFeedArticles::dispatch($feed);
+                } else {
+                    // Update: assign to folder if currently unassigned and export has a folder
+                    if (!$feed->folder_id && $folderId) {
+                        $feed->update(['folder_id' => $folderId]);
+                    }
+                }
+            }
+
+            return back()->with('success', "Imported {$count} new feeds.");
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error parsing file: ' . $e->getMessage());
+        }
+    }
 }

@@ -2,15 +2,17 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use App\Models\Setting;
+use Illuminate\Support\Facades\Http;
 
 class OllamaService
 {
     protected string $baseUrl;
+
     protected string $model;
+
     protected string $provider; // 'ollama' or 'openrouter'
+
     protected string $apiKey = '';
 
     public function __get($name)
@@ -18,6 +20,7 @@ class OllamaService
         if (in_array($name, ['baseUrl', 'model', 'provider'])) {
             return $this->$name;
         }
+
         return null;
     }
 
@@ -30,7 +33,7 @@ class OllamaService
         }
 
         $this->provider = $settings['ai_provider'] ?? config('services.ai.provider', 'ollama');
-        
+
         if ($this->provider === 'openrouter') {
             $this->baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
             $this->model = $settings['openrouter_model'] ?? 'google/gemini-2.0-flash-exp:free';
@@ -47,21 +50,25 @@ class OllamaService
         }
     }
 
-    public function extractArticlesFromHtml(string $html, ?string $selector = null): array
+    public function extractArticlesFromHtml(string $html, ?string $selector = null, string $appLabel = 'ReaderNews-AS'): array
     {
-        // SMART FALLBACK: If we are using default Ollama (local) but have Remote Configs active in DB,
-        // switch to one of them to ensure this works on Remote Servers where localhost:11434 is missing.
-        if ($this->provider === 'ollama' || $this->baseUrl === 'http://localhost:11434') {
-             $remoteConfig = \App\Models\AiConfig::where('is_active', true)
+        // Pick scraping provider: prefer configs designated for scraping, fallback to any active remote.
+        $scrapingConfig = \App\Models\AiConfig::where('is_active', true)
+            ->where('use_for_scraping', true)
+            ->inRandomOrder()
+            ->first();
+
+        if (! $scrapingConfig && ($this->provider === 'ollama' || $this->baseUrl === 'http://localhost:11434')) {
+            $scrapingConfig = \App\Models\AiConfig::where('is_active', true)
                 ->where('provider', '!=', 'ollama')
-                ->where('mode', '!=', 'local') // Explicitly avoid local modes
-                ->inRandomOrder() // Simple load balancing if multiple exist
+                ->where('mode', '!=', 'local')
+                ->inRandomOrder()
                 ->first();
-                
-             if ($remoteConfig) {
-                 \Log::info("Switching AI Provider for extraction: Local -> " . $remoteConfig->name);
-                 $this->useConfig($remoteConfig);
-             }
+        }
+
+        if ($scrapingConfig) {
+            \Log::info('Scraping provider: '.$scrapingConfig->name);
+            $this->useConfig($scrapingConfig);
         }
         // 1. Clean HTML to reduce token usage
         $cleanHtml = $this->cleanHtmlForContext($html, $selector);
@@ -87,17 +94,20 @@ EOT;
 
             // Check provider again after potential swap
             if ($this->provider === 'openrouter' || $this->provider === 'openai' || $this->provider === 'groq' || $this->provider === 'cerebras') {
-                $responseText = $this->askOpenAICompatible($prompt);
+                $responseText = $this->askOpenAICompatible($prompt, '', '', '', $appLabel);
             } else {
                 $responseText = $this->askOllamaBridge($prompt);
             }
 
-            if (empty($responseText)) return [];
+            if (empty($responseText)) {
+                return [];
+            }
 
             return $this->parseResponse($responseText);
 
         } catch (\Exception $e) {
-            \Log::error('AI Service Error: ' . $e->getMessage());
+            \Log::error('AI Service Error: '.$e->getMessage());
+
             return [];
         }
     }
@@ -106,18 +116,18 @@ EOT;
     protected function useConfig(\App\Models\AiConfig $config)
     {
         $this->provider = $config->provider;
-        $this->baseUrl = $config->base_url;
-        $this->apiKey = $config->api_key;
+        $this->baseUrl = $config->resolved_base_url ?? $config->base_url;
+        $this->apiKey = $config->resolved_api_key ?? $config->api_key;
         $this->model = $config->model_id;
-        
+
         // Normalize provider for dispatch logic
-        if (!in_array($this->provider, ['ollama', 'openrouter', 'openai'])) {
-             // Most custom providers (Groq, Cerebras, etc) are OpenAI compatible
-             $this->provider = 'openai';
+        if (! in_array($this->provider, ['ollama', 'openrouter', 'openai'])) {
+            // Most custom providers (Groq, Cerebras, etc) are OpenAI compatible
+            $this->provider = 'openai';
         }
     }
 
-    public function generateText(string $prompt, ?\App\Models\AiConfig $config = null): string
+    public function generateText(string $prompt, ?\App\Models\AiConfig $config = null, string $appLabel = ''): string
     {
         // 1. Determine parameters (Default vs Config)
         $provider = $this->provider;
@@ -127,30 +137,29 @@ EOT;
 
         if ($config) {
             $provider = $config->provider;
-            $baseUrl = $config->base_url;
-            $apiKey = $config->api_key;
-            $model = $config->model_id; // Using field 'model_id' from table
+            $baseUrl = $config->resolved_base_url ?? $config->base_url;
+            $apiKey = $config->resolved_api_key ?? $config->api_key;
+            $model = $config->model_id;
 
-            // Logic to handle empty BaseURLs for known providers if needed
             if (empty($baseUrl)) {
-                if ($provider === 'openrouter') $baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
-                // Add more defaults if needed, e.g. OpenAI official
+                if ($provider === 'openrouter') {
+                    $baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                }
             }
-            
-            // Normalize for dispatch
-             if (!in_array($provider, ['ollama', 'openrouter', 'openai'])) {
-                 $provider = 'openai';
+
+            if (! in_array($provider, ['ollama', 'openrouter', 'openai'])) {
+                $provider = 'openai';
             }
         }
 
         // 2. Dispatch
         if ($provider === 'openrouter' || $provider === 'openai') {
-            return $this->askOpenAICompatible($prompt, $baseUrl, $apiKey, $model);
+            return $this->askOpenAICompatible($prompt, $baseUrl, $apiKey, $model, $appLabel);
         } else {
-            // Ollama: we need to pass the custom URL if it's different, 
+            // Ollama: we need to pass the custom URL if it's different,
             // but the bridge script currently reads ENV or uses default.
             // If the user sets a custom Base URL for Ollama Config, we might need to modify the bridge or passed params.
-            // For now, assume common Ollama bridge handles 'model'. 
+            // For now, assume common Ollama bridge handles 'model'.
             // Note: The bridge script currently hardcodes localhost:11434 usually unless passed.
             // Let's pass the URL to the bridge if supported, or just model.
             return $this->askOllamaBridge($prompt, $model, $baseUrl ?? '');
@@ -161,27 +170,27 @@ EOT;
     {
         $model = $modelOverride ?: $this->model;
         \Log::info("Sending request to Ollama via Bridge: {$model}");
-            
+
         $payloadData = [
             'model' => $model,
             'prompt' => $prompt,
             'stream' => false,
-            'format' => '', 
-            'options' => ['temperature' => 0.1]
+            'format' => '',
+            'options' => ['temperature' => 0.1],
         ];
 
-        // Ensure we handle URL override if your bridge supports it. 
+        // Ensure we handle URL override if your bridge supports it.
         // If the bridge script allows custom host via args or payload, usage here.
-        // Assuming your bridge script primarily just talks to standard port. 
+        // Assuming your bridge script primarily just talks to standard port.
         // We will keep it simple: model is the key variant.
-        
+
         $payload = json_encode($payloadData, JSON_UNESCAPED_SLASHES);
-        
+
         $process = new \Symfony\Component\Process\Process([
-            'node', 
-            base_path('scripts/ollama-bridge.cjs')
+            'node',
+            base_path('scripts/ollama-bridge.cjs'),
         ]);
-        
+
         // Pass custom URL via ENV if needed by the node script
         if ($urlOverride) {
             $process->setEnv(['OLLAMA_HOST' => $urlOverride]);
@@ -190,19 +199,20 @@ EOT;
         $process->setInput($payload);
         $process->setTimeout(600);
         $process->run();
-        
-        if (!$process->isSuccessful()) {
-                \Log::error('Ollama Bridge failed: ' . $process->getErrorOutput());
-                return '';
+
+        if (! $process->isSuccessful()) {
+            \Log::error('Ollama Bridge failed: '.$process->getErrorOutput());
+
+            return '';
         }
-        
+
         $output = $process->getOutput();
         $jsonResponse = json_decode($output, true);
-        
+
         return $jsonResponse['response'] ?? '';
     }
 
-    protected function askOpenAICompatible(string $prompt, string $url = '', string $key = '', string $model = ''): string
+    protected function askOpenAICompatible(string $prompt, string $url = '', string $key = '', string $model = '', string $appLabel = ''): string
     {
         // Fallbacks to instance defaults
         $url = $url ?: $this->baseUrl;
@@ -210,7 +220,7 @@ EOT;
         $model = $model ?: $this->model;
 
         // Auto-fix URL common errors (e.g. user entering base domain instead of full endpoint)
-        if (!empty($url) && !str_ends_with($url, '/chat/completions')) {
+        if (! empty($url) && ! str_ends_with($url, '/chat/completions')) {
             if (str_ends_with($url, '/v1')) {
                 $url .= '/chat/completions';
             } elseif (str_ends_with($url, '/v1/')) {
@@ -222,27 +232,29 @@ EOT;
 
         $response = Http::withToken($key)
             ->withHeaders([
-                'HTTP-Referer' => config('app.url'), 
-                'X-Title' => config('app.name'),
+                'HTTP-Referer' => config('app.url'),
+                'X-Title' => ($appLabel ?: config('app.name')) . (app()->isProduction() ? '' : '-' . app()->environment()),
             ])
-            ->timeout(120) 
+            ->timeout(120)
             ->post($url, [
                 'model' => $model,
                 'messages' => [
-                    ['role' => 'user', 'content' => $prompt]
+                    ['role' => 'user', 'content' => $prompt],
                 ],
                 'temperature' => 0.1,
+                'stream' => false,
             ]);
 
         if ($response->failed()) {
-            \Log::error('AI API Failed (' . $response->status() . '): ' . $response->body());
-            return '';
+            $errorMsg = 'AI API Failed ('.$response->status().'): '.$response->body();
+            \Log::error($errorMsg);
+            throw new \Exception('Provider Error: '.$response->status().' - '.substr($response->body(), 0, 200));
         }
 
         $json = $response->json();
-        
+
         if (isset($json['usage'])) {
-             \Log::info("AI Usage: " . json_encode($json['usage']));
+            \Log::info('AI Usage: '.json_encode($json['usage']));
         }
 
         return $json['choices'][0]['message']['content'] ?? '';
@@ -251,52 +263,56 @@ EOT;
     protected function parseResponse(string $responseText): array
     {
         $articles = [];
-            
+
         // STRATEGY 1: Parse as pipe-delimited text lines
-        \Log::info("Raw LLM Response: " . substr($responseText, 0, 500) . "..."); // Log first 500 chars
+        \Log::info('Raw LLM Response: '.substr($responseText, 0, 500).'...'); // Log first 500 chars
 
         $lines = explode("\n", $responseText);
         foreach ($lines as $line) {
             $line = trim($line);
-            if (empty($line)) continue;
-            
+            if (empty($line)) {
+                continue;
+            }
+
             if (str_contains($line, '|||')) {
                 $parts = explode('|||', $line);
                 if (count($parts) >= 2) {
                     $title = trim($parts[0]);
                     $url = trim($parts[1]);
                     $image = isset($parts[2]) ? trim($parts[2]) : null;
-                    if ($image === 'null') $image = null;
-                    
-                    if (strlen($title) > 5 && !empty($url)) {
+                    if ($image === 'null') {
+                        $image = null;
+                    }
+
+                    if (strlen($title) > 5 && ! empty($url)) {
                         $articles[] = [
                             'title' => $title,
                             'url' => $url,
                             'image' => $image,
-                            'summary' => ''
+                            'summary' => '',
                         ];
                     }
                 }
             }
         }
-        
+
         // STRATEGY 2: Fallback to JSON extraction
         if (empty($articles)) {
             $start = strpos($responseText, '[');
             $end = strrpos($responseText, ']');
-            
+
             if ($start !== false && $end !== false && $end > $start) {
                 $jsonCandidate = substr($responseText, $start, $end - $start + 1);
                 $data = json_decode($jsonCandidate, true);
-                
+
                 if (is_array($data)) {
                     foreach ($data as $item) {
                         if (isset($item['title']) && isset($item['url'])) {
-                                $articles[] = [
+                            $articles[] = [
                                 'title' => $item['title'],
                                 'url' => $item['url'],
                                 'image' => $item['image'] ?? null,
-                                'summary' => $item['summary'] ?? ''
+                                'summary' => $item['summary'] ?? '',
                             ];
                         }
                     }
@@ -311,16 +327,16 @@ EOT;
     {
         // Strategy Change: Instead of cleaning HTML, we extract the structural data
         // of links and texts directly. This turns 1MB of HTML into ~5KB of text context.
-        
-        $dom = new \DOMDocument();
+
+        $dom = new \DOMDocument;
         $originalLibXmlError = libxml_use_internal_errors(true);
         $dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'), LIBXML_NOERROR | LIBXML_NOWARNING);
         libxml_use_internal_errors($originalLibXmlError);
 
         $xpath = new \DOMXPath($dom);
-        
+
         // Remove obviously non-content distinct areas to reduce noise if no selector overrides
-        if (!$selector) {
+        if (! $selector) {
             foreach ($xpath->query('//script|//style|//nav|//footer|//header|//svg|//form') as $node) {
                 $node->parentNode->removeChild($node);
             }
@@ -333,56 +349,56 @@ EOT;
         // If selector is provided, scoped to that validation
         $nodes = null;
         if ($selector) {
-             // If selector targets container, find 'a' inside. If targets 'a', use directly.
-             // We can use a simple query like "$selector//a | $selector[self::a]"
-             // But CSS to XPath conversion is complex. Let's assume user provides XPath or simple tag/id.
-             // For now, let's assume specific ID or Class.
-             // To support "CSS Selectors" nicely in PHP DOM without libs is hard.
-             // Let's rely on specific XPath for now if it starts with /, else custom logic.
-             // Wait, user will type ".class". We need simpler "str_contains" logic or similar if we don't include a library.
-             // LIMITATION: Use Symfony CssSelector if installed, or assume XPath.
-             // Let's try to query strict XPath for now, or just assume the user puts a class name and we search for div with that class.
-             
-             // Simple hack for now: If user puts ".class", we convert to `//*[@class and contains(concat(' ', normalize-space(@class), ' '), ' class ')]`
-             // If #id, `//*[@id='id']`
-             // If simple tag `main`, `//main`
-             
-             $query = $selector; // Assume valid XPath if complex, or simple map:
-             if (str_starts_with($selector, '.')) {
-                 $class = substr($selector, 1);
-                 $query = "//*[contains(concat(' ', normalize-space(@class), ' '), ' $class ')]//a";
-             } elseif (str_starts_with($selector, '#')) {
-                 $id = substr($selector, 1);
-                 $query = "//*[@id='$id']//a";
-             } elseif (!str_starts_with($selector, '/')) {
-                 // Assume tag name
-                 $query = "//{$selector}//a";
-             }
-             
-             try {
+            // If selector targets container, find 'a' inside. If targets 'a', use directly.
+            // We can use a simple query like "$selector//a | $selector[self::a]"
+            // But CSS to XPath conversion is complex. Let's assume user provides XPath or simple tag/id.
+            // For now, let's assume specific ID or Class.
+            // To support "CSS Selectors" nicely in PHP DOM without libs is hard.
+            // Let's rely on specific XPath for now if it starts with /, else custom logic.
+            // Wait, user will type ".class". We need simpler "str_contains" logic or similar if we don't include a library.
+            // LIMITATION: Use Symfony CssSelector if installed, or assume XPath.
+            // Let's try to query strict XPath for now, or just assume the user puts a class name and we search for div with that class.
+
+            // Simple hack for now: If user puts ".class", we convert to `//*[@class and contains(concat(' ', normalize-space(@class), ' '), ' class ')]`
+            // If #id, `//*[@id='id']`
+            // If simple tag `main`, `//main`
+
+            $query = $selector; // Assume valid XPath if complex, or simple map:
+            if (str_starts_with($selector, '.')) {
+                $class = substr($selector, 1);
+                $query = "//*[contains(concat(' ', normalize-space(@class), ' '), ' $class ')]//a";
+            } elseif (str_starts_with($selector, '#')) {
+                $id = substr($selector, 1);
+                $query = "//*[@id='$id']//a";
+            } elseif (! str_starts_with($selector, '/')) {
+                // Assume tag name
+                $query = "//{$selector}//a";
+            }
+
+            try {
                 $nodes = $xpath->query($query);
-             } catch(\Exception $e) {
+            } catch (\Exception $e) {
                 // Fallback
-                $nodes = $xpath->query('//a'); 
-             }
+                $nodes = $xpath->query('//a');
+            }
         } else {
-             $nodes = $xpath->query('//a');
+            $nodes = $xpath->query('//a');
         }
-        
-        if (!$nodes || $nodes->length === 0) {
-             // Fallback if selector yields nothing
-             $nodes = $xpath->query('//a');
+
+        if (! $nodes || $nodes->length === 0) {
+            // Fallback if selector yields nothing
+            $nodes = $xpath->query('//a');
         }
-        
+
         foreach ($nodes as $node) {
             $url = $node->getAttribute('href');
             $text = trim(preg_replace('/\s+/', ' ', $node->textContent));
-            
+
             // Basic filtering
             if (empty($url) || strlen($text) < 10 || str_starts_with($url, '#') || str_starts_with($url, 'javascript:')) {
                 continue;
             }
-            
+
             // Check for image inside (some sites use image as title link)
             $imgSrc = '';
             $imgs = $node->getElementsByTagName('img');
@@ -391,16 +407,20 @@ EOT;
             }
 
             // Deduplication
-            if (isset($uniqueLinks[$url])) continue;
+            if (isset($uniqueLinks[$url])) {
+                continue;
+            }
             $uniqueLinks[$url] = true;
 
             $entry = "Link: \"$text\" | URL: $url";
-            if ($imgSrc) $entry .= " | Image: $imgSrc";
-            
+            if ($imgSrc) {
+                $entry .= " | Image: $imgSrc";
+            }
+
             $output[] = $entry;
         }
 
-        // Return a raw list of candidates. 
+        // Return a raw list of candidates.
         // The LLM is smart enough to pick the "News" ones from this list.
         return implode("\n", array_slice($output, 0, 300)); // Limit to first 300 detected links to fit context
     }

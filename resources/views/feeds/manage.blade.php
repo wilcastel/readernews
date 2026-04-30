@@ -12,6 +12,17 @@
                 <p class="text-surface-500 mt-2">Check the status of your subscriptions and configure connection modes.</p>
             </div>
             <div class="flex items-center gap-3">
+                 <a href="{{ route('feeds.export') }}" class="px-3 py-2 rounded-lg bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-300 font-medium transition-colors text-sm flex items-center gap-2">
+                    <ion-icon name="download-outline"></ion-icon> Export
+                </a>
+                <button onclick="document.getElementById('importFeedsFile').click()" class="px-3 py-2 rounded-lg bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-600 dark:text-surface-300 font-medium transition-colors text-sm flex items-center gap-2">
+                    <ion-icon name="cloud-upload-outline"></ion-icon> Import
+                </button>
+                <form id="importFeedsForm" action="{{ route('feeds.import') }}" method="POST" enctype="multipart/form-data" class="hidden">
+                    @csrf
+                    <input type="file" name="file" id="importFeedsFile" accept=".json" onchange="document.getElementById('importFeedsForm').submit()">
+                </form>
+
                 <form action="{{ route('system.restart-queues') }}" method="POST" onsubmit="return confirm('WARNING: This will restart all queue workers and retry failed jobs. Continue?')">
                     @csrf
                     <button type="submit" class="px-3 py-2 rounded-lg bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-medium transition-colors text-sm flex items-center gap-2" title="Restart workers & retry failed jobs">

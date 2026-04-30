@@ -90,42 +90,43 @@
                 </iframe>
             </div>
             <div class="p-8 pb-4 border-b border-surface-100 dark:border-surface-800">
-                <div class="flex items-center gap-2 mb-3 text-primary-600 dark:text-primary-400">
+                <div class="flex items-center gap-2 mb-4 text-primary-600 dark:text-primary-400">
                      @if($article->feed->favicon)
-                        <img src="{{ $article->feed->favicon }}" class="w-4 h-4 rounded-sm" alt="Favicon">
+                        <img src="{{ $article->feed->favicon }}" class="w-5 h-5 rounded-sm" alt="Favicon">
                     @endif
-                    <span class="text-sm font-medium uppercase tracking-wider">{{ $article->feed->name }}</span>
+                    <span class="text-sm font-bold uppercase tracking-wider">{{ $article->feed->name }}</span>
                 </div>
-                 <h1 class="text-3xl md:text-4xl font-bold font-serif leading-tight text-surface-900 dark:text-white">
+                 <h1 class="text-3xl md:text-5xl font-bold font-sans leading-tight text-surface-900 dark:text-white">
                     {{ $article->title }}
                 </h1>
             </div>
         
-        @elseif($article->image_url)
-            <div class="h-64 md:h-80 w-full relative">
-                <img src="{{ $article->image_url }}" class="w-full h-full object-cover" alt="Article Header">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                <div class="absolute bottom-6 left-6 right-6 text-white">
-                    <div class="flex items-center gap-2 mb-2">
+        @elseif(!empty($article->image_url))
+            <div class="h-80 md:h-[500px] w-full relative group">
+                <img src="{{ $article->image_url }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Article Header"
+                     onerror="this.style.display='none'">
+                <div class="absolute inset-0 bg-gradient-to-t from-surface-900/95 via-surface-900/50 to-transparent"></div>
+                <div class="absolute bottom-8 left-6 right-6 md:left-10 md:right-10 text-white">
+                    <div class="flex items-center gap-3 mb-4 opacity-90">
                         @if($article->feed->favicon)
-                            <img src="{{ $article->feed->favicon }}" class="w-4 h-4 rounded-sm" alt="Favicon">
+                            <img src="{{ $article->feed->favicon }}" class="w-5 h-5 rounded-sm bg-white" alt="Favicon">
                         @endif
-                        <span class="text-sm font-medium uppercase tracking-wider">{{ $article->feed->name }}</span>
+                        <span class="text-sm font-bold uppercase tracking-wider text-primary-200">{{ $article->feed->name }}</span>
                     </div>
-                    <h1 class="text-3xl md:text-4xl font-bold font-serif leading-tight text-white shadow-black drop-shadow-md">
+                    <h1 class="text-3xl md:text-5xl font-bold font-sans leading-tight text-white shadow-black drop-shadow-lg">
                         {{ $article->title }}
                     </h1>
                 </div>
             </div>
         @else
-            <div class="p-8 pb-4 border-b border-surface-100 dark:border-surface-800">
-                <div class="flex items-center gap-2 mb-3 text-primary-600 dark:text-primary-400">
+            <div class="p-8 pb-6 border-b border-surface-100 dark:border-surface-800 bg-surface-50 dark:bg-surface-800/30">
+                <div class="flex items-center gap-2 mb-4 text-primary-600 dark:text-primary-400">
                      @if($article->feed->favicon)
-                        <img src="{{ $article->feed->favicon }}" class="w-4 h-4 rounded-sm" alt="Favicon">
+                        <img src="{{ $article->feed->favicon }}" class="w-5 h-5 rounded-sm" alt="Favicon">
                     @endif
-                    <span class="text-sm font-medium uppercase tracking-wider">{{ $article->feed->name }}</span>
+                    <span class="text-sm font-bold uppercase tracking-wider">{{ $article->feed->name }}</span>
                 </div>
-                 <h1 class="text-3xl md:text-4xl font-bold font-serif leading-tight text-surface-900 dark:text-white">
+                 <h1 class="text-3xl md:text-5xl font-bold font-sans leading-tight text-surface-900 dark:text-white">
                     {{ $article->title }}
                 </h1>
             </div>
@@ -209,11 +210,12 @@
 
             <div class="flex items-center gap-2">
                   <!-- AI Writer Button -->
-                  <div x-data="{
+                  <div class="flex items-center" x-data="{
                     open: false,
                     generating: false,
                     prompts: [],
                     aiConfigs: [],
+                    groupedConfigs: [],
                     selectedPrompt: 1,
                     selectedAiConfig: 'round-robin',
                     customInstructions: '',
@@ -228,9 +230,18 @@
                             });
                          
                          // Fetch AI Configs
-                         fetch('{{ route('ai-configs.index') }}', { headers: { 'Accept': 'application/json' } })
-                            .then(r => r.json())
-                            .then(data => this.aiConfigs = data);
+                          fetch('{{ route('ai-configs.index', ['sort' => 'provider', 'active_only' => 1]) }}', { headers: { 'Accept': 'application/json' } })
+                             .then(r => r.json())
+                             .then(data => {
+                                 this.aiConfigs = data;
+                                 const groups = {};
+                                 data.forEach(c => {
+                                     const key = c.provider;
+                                     if (!groups[key]) groups[key] = [];
+                                     groups[key].push(c);
+                                 });
+                                 this.groupedConfigs = Object.keys(groups).sort().map(k => ({ provider: k, configs: groups[k] }));
+                             });
                     },
                     generate() {
                         this.generating = true;
@@ -287,35 +298,57 @@
                                     <div class="max-w-sm mx-auto space-y-4 mb-6 text-left">
                                         
                                         <!-- AI Engine Selection -->
-                                        <div>
-                                            <label class="block text-xs font-bold uppercase text-surface-500 mb-1">AI Model Engine</label>
-                                            <select x-model="selectedAiConfig" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
-                                                <option value="">System Default (Ollama)</option>
-                                                <option value="round-robin">🔄 Round Robin (Free Tier)</option>
-                                                <optgroup label="My Providers">
-                                                    <template x-for="c in aiConfigs" :key="c.id">
+                                        <div class="mb-4">
+                                        <label class="block text-xs font-bold uppercase text-surface-500 mb-1">AI Model Engine</label>
+                                        <select x-model="selectedAiConfig" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
+                                            <option value="">System Default (Ollama)</option>
+                                            <option value="round-robin">🔄 Round Robin (Free Tier)</option>
+                                            <template x-for="group in groupedConfigs" :key="group.provider">
+                                                <optgroup :label="group.provider.charAt(0).toUpperCase() + group.provider.slice(1)">
+                                                    <template x-for="c in group.configs" :key="c.id">
                                                         <option :value="c.id" x-text="c.name"></option>
                                                     </template>
                                                 </optgroup>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Select Prompt</label>
-                                            <select x-model="selectedPrompt" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
-                                                <template x-for="p in prompts" :key="p.id">
-                                                    <option :value="p.id" x-text="p.name"></option>
-                                                </template>
-                                            </select>
-                                        </div>
-                                        <div>
-                                             <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Extra Instructions (Optional)</label>
-                                             <textarea x-model="customInstructions" placeholder="e.g. Focus on the positive aspects..." class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm p-2 h-20 placeholder-surface-400"></textarea>
+                                            </template>
+                                        </select>
+                                        
+                                        <!-- Cost Indicator -->
+                                        <div class="mt-2 min-h-[20px]">
+                                            <template x-for="c in aiConfigs" :key="c.id">
+                                                <div x-show="c.id == selectedAiConfig && c.cantaprox > 0" class="inline-block transition-all">
+                                                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md border border-indigo-100 dark:border-indigo-800">
+                                                        💎 ~<span x-text="c.cantaprox"></span> articles / $10
+                                                    </span>
+                                                </div>
+                                            </template>
+                                            <div x-show="selectedAiConfig === 'round-robin' || !selectedAiConfig" class="text-xs text-green-600 dark:text-green-400 font-medium px-1">
+                                                ✅ Free Tier
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <button @click="generate()" class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary-500/30 hover:-translate-y-1">
-                                        Generate Draft
+                                    <div class="mb-4">
+                                        <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Select Prompt</label>
+                                        <select x-model="selectedPrompt" class="w-full rounded-lg border-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-white text-sm py-2">
+                                            <template x-for="p in prompts" :key="p.id">
+                                                <option :value="p.id" x-text="p.name"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-6">
+                                         <label class="block text-xs font-bold uppercase text-surface-500 mb-1">Model Description</label>
+                                         <div class="w-full rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-3 min-h-[80px] text-sm text-surface-600 dark:text-surface-300">
+                                            <template x-for="c in aiConfigs" :key="c.id">
+                                                <p x-show="c.id == selectedAiConfig" x-text="c.description || 'No description available for this model.'"></p>
+                                            </template>
+                                            <p x-show="selectedAiConfig === 'round-robin'">Automatically cycles through available free providers to ensure high availability.</p>
+                                            <p x-show="!selectedAiConfig">Standard system default generation.</p>
+                                         </div>
+                                    </div>
+
+                                    <button @click="generate()" class="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary-500/30 hover:-translate-y-1 flex items-center justify-center gap-2">
+                                        <ion-icon name="sparkles"></ion-icon> Generate Rewrite
                                     </button>
                                 </div>
                                 <div x-show="generating" class="flex flex-col items-center justify-center py-12">
@@ -434,12 +467,16 @@
 
             <div class="p-6 md:p-10">
                 <!-- Content Area -->
-                <div id="article-content" class="prose dark:prose-invert prose-xl max-w-none font-sans leading-relaxed text-surface-800 dark:text-surface-300
-                    prose-iframe:w-full prose-iframe:aspect-video prose-iframe:rounded-xl prose-img:rounded-xl">
+                <div id="article-content" class="prose dark:prose-invert prose-xl max-w-none font-sans text-gray-800 dark:text-gray-200 leading-relaxed
+                    prose-p:text-xl prose-p:leading-8 prose-p:mb-8 
+                    prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-white
+                    prose-a:text-primary-600 dark:prose-a:text-primary-400 prose-a:no-underline hover:prose-a:underline
+                    prose-img:hidden
+                    prose-iframe:w-full prose-iframe:aspect-video prose-iframe:rounded-xl">
                     @if($article->content)
                         {!! $article->content !!}
                     @else
-                        <div class="text-xl font-sans text-surface-600 mb-8 leading-relaxed">
+                        <div class="text-xl font-sans text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
                             {{ $article->summary }}
                         </div>
                     @endif

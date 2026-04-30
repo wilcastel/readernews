@@ -7,9 +7,14 @@
                 <h1 class="text-2xl md:text-3xl text-slate-800 dark:text-white font-bold">Configuración</h1>
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Gestiona tus preferencias.</p>
             </div>
-            <a href="{{ route('ai-configs.index') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
-                <ion-icon name="hardware-chip-outline"></ion-icon> Gestionar Motores IA
-            </a>
+            <div class="flex gap-2">
+                <a href="{{ route('provider-accounts.index') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <ion-icon name="key-outline"></ion-icon> API Keys
+                </a>
+                <a href="{{ route('ai-configs.index') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <ion-icon name="hardware-chip-outline"></ion-icon> AI Engines
+                </a>
+            </div>
         </div>
 
         <div class="bg-white dark:bg-surface-900 rounded-lg border border-slate-200 dark:border-surface-800 shadow-lg p-6 max-w-3xl" 
