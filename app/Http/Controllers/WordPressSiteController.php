@@ -25,7 +25,7 @@ class WordPressSiteController extends Controller
         $site = auth()->user()->wordPressSites()->create($request->validated());
 
         try {
-            new WordPressService($site)->testConnection();
+            (new WordPressService($site))->testConnection();
         } catch (\Throwable) {
             // Connection test is best-effort; site is still created
         }
