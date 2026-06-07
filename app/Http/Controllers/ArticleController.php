@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PublicationStatus;
+use App\Jobs\PublishToWordPress;
 use App\Models\Article;
+use App\Models\WordPressPublication;
+use App\Models\WordPressSite;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use fivefilters\Readability\Readability;
 use fivefilters\Readability\Configuration;
 use fivefilters\Readability\ParseException;
-
-use Illuminate\Database\UniqueConstraintViolationException;
 
 class ArticleController extends Controller
 {
@@ -274,6 +279,43 @@ class ArticleController extends Controller
         $article->delete();
 
         return redirect($redirectUrl)->with('success', 'Article deleted.');
+    }
+
+    public function queueForPublish(Request $request, Article $article): JsonResponse
+    {
+        $request->validate([
+            'wordpress_site_id' => ['required', 'exists:wordpress_sites,id'],
+        ]);
+
+        $site = WordPressSite::where('id', $request->wordpress_site_id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (! $site) {
+            abort(403, 'This WordPress site does not belong to you.');
+        }
+
+        $existing = WordPressPublication::where('article_id', $article->id)
+            ->where('wordpress_site_id', $site->id)
+            ->whereIn('status', [PublicationStatus::Pending->value, PublicationStatus::Processing->value])
+            ->first();
+
+        if ($existing) {
+            return response()->json(['message' => 'Already queued or processing'], 409);
+        }
+
+        // Reuse existing publication (e.g. previously failed) or create new one
+        $publication = WordPressPublication::updateOrCreate(
+            ['article_id' => $article->id, 'wordpress_site_id' => $site->id],
+            ['status' => PublicationStatus::Pending, 'error_message' => null, 'wp_post_id' => null, 'wp_post_url' => null, 'published_at' => null]
+        );
+
+        PublishToWordPress::dispatch($publication);
+
+        return response()->json([
+            'status' => 'queued',
+            'publication_id' => $publication->id,
+        ]);
     }
 
     public function fetchModalContent(Article $article)
