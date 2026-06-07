@@ -170,25 +170,68 @@
                 $userPivot = $article->users->first()?->pivot;
                 $isSaved = $userPivot->is_saved ?? false;
                 $isRead = $userPivot->is_read ?? false;
+                $latestPublication = $article->wordpressPublications->first();
+                $pubStatus = $latestPublication?->status?->value;
+                $pubError = $latestPublication?->error_message;
+                $pubSiteName = $latestPublication?->wordPressSite?->name ?? '';
             @endphp
-            <article 
-                x-data="{ 
-                    saved: {{ $isSaved ? 'true' : 'false' }}, 
+            <article
+                x-data="{
+                    saved: {{ $isSaved ? 'true' : 'false' }},
                     read: {{ $isRead ? 'true' : 'false' }},
                     allowDim: {{ (($context['source'] ?? '') !== 'saved' && (!isset($feed) || $feed->name !== 'Web Imports')) ? 'true' : 'false' }},
+                    showWpModal: false,
+                    wpLoading: false,
+                    wpMessage: null,
+                    wpMessageType: null,
+                    wpStatus: {{ $pubStatus ? "'$pubStatus'" : 'null' }},
+                    wpSiteName: '{{ addslashes($pubSiteName) }}',
                     toggleSaved() {
                         this.saved = !this.saved;
-                        fetch('/articles/{{ $article->id }}/toggle-saved', { 
-                            method: 'POST', 
-                            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } 
+                        fetch('/articles/{{ $article->id }}/toggle-saved', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                         });
                     },
                     markRead() {
                         this.read = true;
-                        fetch('/articles/{{ $article->id }}/mark-read', { 
-                            method: 'POST', 
-                            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } 
+                        fetch('/articles/{{ $article->id }}/mark-read', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                         });
+                    },
+                    publishToWP(siteId, siteName) {
+                        this.wpLoading = true;
+                        this.wpMessage = null;
+                        fetch('/articles/{{ $article->id }}/publish-to-wordpress', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({ wordpress_site_id: siteId })
+                        })
+                        .then(async r => {
+                            const data = await r.json();
+                            if (r.status === 409) {
+                                this.wpMessage = data.message || 'Already queued or processing';
+                                this.wpMessageType = 'warning';
+                            } else if (!r.ok) {
+                                this.wpMessage = data.message || 'Error queuing article';
+                                this.wpMessageType = 'error';
+                            } else {
+                                this.wpStatus = 'pending';
+                                this.wpSiteName = siteName;
+                                this.wpMessage = 'Queued for publishing to ' + siteName;
+                                this.wpMessageType = 'success';
+                                setTimeout(() => { this.showWpModal = false; }, 1500);
+                            }
+                        })
+                        .catch(() => {
+                            this.wpMessage = 'Network error. Try again.';
+                            this.wpMessageType = 'error';
+                        })
+                        .finally(() => { this.wpLoading = false; });
                     }
                 }"
                 :class="{'opacity-60 grayscale': read && allowDim, 'ring-2 ring-primary-500 bg-primary-50 dark:bg-surface-800': selected.includes('{{ $article->id }}') || selected.includes({{ $article->id }})}"
@@ -233,13 +276,52 @@
                     <p class="text-surface-500 text-sm line-clamp-3 mb-4 flex-1">
                         {{ Str::limit($article->summary, 150) }}
                     </p>
+                    {{-- WordPress publication status badge --}}
+                    @if($latestPublication)
+                    <div class="mb-2 flex items-center gap-1.5">
+                        @php
+                            $badgeClasses = match($pubStatus) {
+                                'pending'    => 'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400',
+                                'processing' => 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+                                'published'  => 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+                                'failed'     => 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+                                default      => 'bg-surface-100 text-surface-500',
+                            };
+                            $badgeIcon = match($pubStatus) {
+                                'pending'    => 'time-outline',
+                                'processing' => 'sync-outline',
+                                'published'  => 'cloud-done-outline',
+                                'failed'     => 'cloud-offline-outline',
+                                default      => 'ellipse-outline',
+                            };
+                        @endphp
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide {{ $badgeClasses }}"
+                              @if($pubStatus === 'failed' && $pubError) title="{{ $pubError }}" @endif>
+                            <ion-icon name="{{ $badgeIcon }}" class="text-xs"></ion-icon>
+                            WP: {{ ucfirst($pubStatus) }}
+                        </span>
+                        @if($pubStatus === 'failed' && $pubError)
+                        <span class="text-[10px] text-red-500 dark:text-red-400 truncate max-w-[120px]" title="{{ $pubError }}">{{ Str::limit($pubError, 30) }}</span>
+                        @endif
+                    </div>
+                    @endif
+
                     <div class="flex items-center justify-between pt-4 border-t border-surface-100 dark:border-surface-800">
-                        <button @click.stop="toggleSaved()" 
-                                class="transition-colors" 
-                                :class="saved ? 'text-primary-600' : 'text-surface-400 hover:text-primary-600'" 
+                        <button @click.stop="toggleSaved()"
+                                class="transition-colors"
+                                :class="saved ? 'text-primary-600' : 'text-surface-400 hover:text-primary-600'"
                                 title="Save">
                             <ion-icon :name="saved ? 'bookmark' : 'bookmark-outline'" class="text-xl"></ion-icon>
                         </button>
+
+                        @if($wordPressSites->isNotEmpty())
+                        <button @click.stop="showWpModal = true"
+                                class="transition-colors"
+                                :class="wpStatus === 'published' ? 'text-green-500' : (wpStatus ? 'text-amber-500' : 'text-surface-400 hover:text-primary-600')"
+                                title="Publish to WordPress">
+                            <ion-icon name="cloud-upload-outline" class="text-xl"></ion-icon>
+                        </button>
+                        @endif
 
                         @if($article->feed->user_id === auth()->id())
                         <form action="{{ route('articles.destroy', $article) }}" method="POST" class="inline-flex" onsubmit="return confirm('Delete this article?');">
@@ -250,13 +332,78 @@
                             </button>
                         </form>
                         @endif
-                        <button @click.stop="markRead()" 
+
+                        <button @click.stop="markRead()"
                                 class="transition-colors"
-                                :class="read ? 'text-green-500' : 'text-surface-400 hover:text-green-500'" 
+                                :class="read ? 'text-green-500' : 'text-surface-400 hover:text-green-500'"
                                 title="Mark as Read">
                             <ion-icon :name="read ? 'checkmark-circle' : 'checkmark-circle-outline'" class="text-xl"></ion-icon>
                         </button>
                     </div>
+
+                    {{-- WordPress site-picker modal (scoped to card x-data) --}}
+                    @if($wordPressSites->isNotEmpty())
+                    <div x-show="showWpModal"
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                         style="display:none;"
+                         @click.self="showWpModal = false"
+                         @keydown.escape.window="showWpModal = false">
+                        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showWpModal = false"></div>
+                        <div class="relative bg-white dark:bg-surface-900 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-surface-200 dark:border-surface-700" @click.stop>
+                            {{-- Modal header --}}
+                            <div class="p-4 border-b border-surface-200 dark:border-surface-700 flex justify-between items-center bg-surface-50 dark:bg-surface-950">
+                                <h3 class="font-bold text-base dark:text-white flex items-center gap-2">
+                                    <ion-icon name="cloud-upload-outline" class="text-primary-500"></ion-icon>
+                                    Publish to WordPress
+                                </h3>
+                                <button @click="showWpModal = false" class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-200">
+                                    <ion-icon name="close" class="text-xl"></ion-icon>
+                                </button>
+                            </div>
+                            {{-- Modal body --}}
+                            <div class="p-4 space-y-2">
+                                {{-- Feedback message --}}
+                                <div x-show="wpMessage"
+                                     x-transition
+                                     class="px-3 py-2 rounded-lg text-sm font-medium"
+                                     :class="{
+                                         'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300': wpMessageType === 'success',
+                                         'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300': wpMessageType === 'warning',
+                                         'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300': wpMessageType === 'error'
+                                     }"
+                                     style="display:none;">
+                                    <span x-text="wpMessage"></span>
+                                </div>
+                                <p class="text-xs text-surface-500 dark:text-surface-400 mb-1">Select a site to queue this article for AI rewriting and publishing as a draft:</p>
+                                @foreach($wordPressSites as $wpSite)
+                                <button @click="publishToWP({{ $wpSite->id }}, '{{ addslashes($wpSite->name) }}')"
+                                        :disabled="wpLoading"
+                                        class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-surface-200 dark:border-surface-700 hover:border-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors text-left group disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <div class="flex items-center gap-2">
+                                        <ion-icon name="globe-outline" class="text-primary-500 text-base"></ion-icon>
+                                        <div>
+                                            <div class="text-sm font-medium text-surface-900 dark:text-white">{{ $wpSite->name }}</div>
+                                            <div class="text-[10px] text-surface-400 truncate max-w-[160px]">{{ $wpSite->site_url }}</div>
+                                        </div>
+                                    </div>
+                                    <div x-show="!wpLoading">
+                                        <ion-icon name="arrow-forward-outline" class="text-surface-400 group-hover:text-primary-500 text-base transition-colors"></ion-icon>
+                                    </div>
+                                    <div x-show="wpLoading">
+                                        <div class="animate-spin rounded-full h-4 w-4 border-2 border-surface-200 border-t-primary-500"></div>
+                                    </div>
+                                </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </article>
             @empty

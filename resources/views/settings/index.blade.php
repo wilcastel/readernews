@@ -333,4 +333,212 @@
                 </div>
             </div>
         </div>
+
+        <!-- WordPress Sites Section -->
+        <div class="mt-8 bg-white dark:bg-surface-900 rounded-lg border border-slate-200 dark:border-surface-800 shadow-lg p-6 max-w-3xl"
+             x-data="{
+                sites: @json($wordPressSites),
+                showAddForm: false,
+                addLoading: false,
+                addError: null,
+                newSite: { name: '', site_url: '', username: '', application_password: '' },
+                testResults: {},
+                testLoading: {},
+
+                async addSite() {
+                    this.addLoading = true;
+                    this.addError = null;
+                    try {
+                        const r = await fetch('{{ route('wordpress-sites.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(this.newSite)
+                        });
+                        const data = await r.json();
+                        if (!r.ok) {
+                            const msgs = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Validation error');
+                            this.addError = msgs;
+                        } else {
+                            this.sites.push(data);
+                            this.newSite = { name: '', site_url: '', username: '', application_password: '' };
+                            this.showAddForm = false;
+                        }
+                    } catch (e) {
+                        this.addError = 'Network error. Try again.';
+                    } finally {
+                        this.addLoading = false;
+                    }
+                },
+
+                async testConnection(site) {
+                    this.testLoading[site.id] = true;
+                    this.testResults[site.id] = null;
+                    try {
+                        const r = await fetch('/wordpress-sites/' + site.id + '/test-connection', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                'Accept': 'application/json'
+                            }
+                        });
+                        const data = await r.json();
+                        this.testResults[site.id] = data;
+                    } catch (e) {
+                        this.testResults[site.id] = { success: false, message: 'Network error' };
+                    } finally {
+                        this.testLoading[site.id] = false;
+                    }
+                },
+
+                async deleteSite(site, idx) {
+                    if (!confirm('Delete ' + site.name + '? This will not affect already-published posts.')) return;
+                    try {
+                        await fetch('/wordpress-sites/' + site.id, {
+                            method: 'DELETE',
+                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
+                        });
+                        this.sites.splice(idx, 1);
+                        delete this.testResults[site.id];
+                    } catch (e) {
+                        alert('Delete failed. Try again.');
+                    }
+                },
+
+                toggleActive(site) {
+                    site.is_active = !site.is_active;
+                    fetch('/wordpress-sites/' + site.id, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ is_active: site.is_active })
+                    }).catch(() => { site.is_active = !site.is_active; });
+                }
+             }">
+
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        <ion-icon name="logo-wordpress" class="text-blue-500"></ion-icon>
+                        WordPress Sites
+                    </h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Manage your WordPress publishing destinations.</p>
+                </div>
+                <button @click="showAddForm = !showAddForm"
+                        class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <ion-icon :name="showAddForm ? 'close-outline' : 'add-outline'"></ion-icon>
+                    <span x-text="showAddForm ? 'Cancel' : 'Add Site'"></span>
+                </button>
+            </div>
+
+            {{-- Add Site Form --}}
+            <div x-show="showAddForm"
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 -translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="mb-6 p-4 border border-slate-200 dark:border-surface-700 rounded-lg bg-slate-50 dark:bg-surface-950"
+                 style="display:none;">
+                <h3 class="font-semibold text-slate-700 dark:text-white mb-4 text-sm">New WordPress Site</h3>
+                <div x-show="addError"
+                     class="mb-3 px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm rounded-lg"
+                     x-text="addError"
+                     style="display:none;"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Site Name</label>
+                        <input type="text" x-model="newSite.name" placeholder="My Blog" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white text-sm p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Site URL</label>
+                        <input type="url" x-model="newSite.site_url" placeholder="https://myblog.example.com" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white text-sm p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Username</label>
+                        <input type="text" x-model="newSite.username" placeholder="editor" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white text-sm p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Application Password</label>
+                        <input type="password" x-model="newSite.application_password" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx" class="w-full rounded-md border-gray-300 dark:border-surface-700 bg-white dark:bg-surface-800 text-slate-900 dark:text-white text-sm p-2 border">
+                        <p class="text-[10px] text-slate-400 mt-1">Generate under WordPress &rarr; Users &rarr; Application Passwords</p>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button @click="addSite()" :disabled="addLoading"
+                            class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50">
+                        <div x-show="addLoading" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <ion-icon x-show="!addLoading" name="save-outline"></ion-icon>
+                        Save Site
+                    </button>
+                </div>
+            </div>
+
+            {{-- Sites list --}}
+            <div class="space-y-3">
+                <template x-if="sites.length === 0">
+                    <div class="text-center py-8 text-slate-400 dark:text-surface-500">
+                        <ion-icon name="cloud-offline-outline" class="text-4xl mb-2 block mx-auto"></ion-icon>
+                        <p class="text-sm">No WordPress sites configured yet.</p>
+                    </div>
+                </template>
+
+                <template x-for="(site, idx) in sites" :key="site.id">
+                    <div class="border border-slate-200 dark:border-surface-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-surface-800 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <ion-icon name="globe-outline" class="text-blue-400 text-xl flex-shrink-0"></ion-icon>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="font-semibold text-slate-800 dark:text-white" x-text="site.name"></span>
+                                        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                                              :class="site.is_active ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-surface-100 dark:bg-surface-700 text-surface-500'"
+                                              x-text="site.is_active ? 'Active' : 'Inactive'"></span>
+                                    </div>
+                                    <a :href="site.site_url" target="_blank" class="text-xs text-slate-400 hover:text-primary-500 transition-colors truncate block max-w-xs" x-text="site.site_url"></a>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 flex-shrink-0 ml-4">
+                                {{-- Test button --}}
+                                <button @click="testConnection(site)"
+                                        :disabled="testLoading[site.id]"
+                                        class="p-2 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors disabled:opacity-50"
+                                        title="Test Connection">
+                                    <div x-show="testLoading[site.id]" class="animate-spin rounded-full h-4 w-4 border-2 border-surface-200 border-t-indigo-500"></div>
+                                    <ion-icon x-show="!testLoading[site.id]" name="flask-outline" class="text-lg"></ion-icon>
+                                </button>
+                                {{-- Toggle active --}}
+                                <button @click="toggleActive(site)"
+                                        class="p-2 transition-colors"
+                                        :class="site.is_active ? 'text-green-500 hover:text-surface-400' : 'text-surface-400 hover:text-green-500'"
+                                        :title="site.is_active ? 'Deactivate' : 'Activate'">
+                                    <ion-icon :name="site.is_active ? 'toggle' : 'toggle-outline'" class="text-xl"></ion-icon>
+                                </button>
+                                {{-- Delete --}}
+                                <button @click="deleteSite(site, idx)"
+                                        class="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                        title="Delete Site">
+                                    <ion-icon name="trash-outline" class="text-lg"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Test result inline --}}
+                        <div x-show="testResults[site.id]"
+                             x-transition
+                             class="mt-3 px-3 py-2 rounded-lg text-sm flex items-center gap-2"
+                             :class="testResults[site.id] && testResults[site.id].success ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'"
+                             style="display:none;">
+                            <ion-icon :name="testResults[site.id] && testResults[site.id].success ? 'checkmark-circle-outline' : 'alert-circle-outline'" class="text-base flex-shrink-0"></ion-icon>
+                            <span x-text="testResults[site.id] ? testResults[site.id].message : ''"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
 </x-layout>
