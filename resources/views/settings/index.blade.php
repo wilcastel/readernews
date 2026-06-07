@@ -335,8 +335,9 @@
         </div>
 
         <!-- WordPress Sites Section -->
-        <div class="mt-8 bg-white dark:bg-surface-900 rounded-lg border border-slate-200 dark:border-surface-800 shadow-lg p-6 max-w-3xl"
-             x-data="{
+        <script>
+        function wordPressSitesData() {
+            return {
                 sites: @json($wordPressSites),
                 showAddForm: false,
                 addLoading: false,
@@ -420,7 +421,11 @@
                         body: JSON.stringify({ is_active: site.is_active })
                     }).catch(() => { site.is_active = !site.is_active; });
                 }
-             }">
+            };
+        }
+        </script>
+        <div class="mt-8 bg-white dark:bg-surface-900 rounded-lg border border-slate-200 dark:border-surface-800 shadow-lg p-6 max-w-3xl"
+             x-data="wordPressSitesData()">
 
             <div class="flex justify-between items-center mb-6">
                 <div>
