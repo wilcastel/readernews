@@ -57,6 +57,9 @@ class PublishToWordPress implements ShouldQueue
         // Resolve WordPress service (allows test mocking via app()->bind())
         $wpService = app(WordPressService::class, ['site' => $site]);
 
+        // Persist rewritten content immediately so it's not lost if WP API fails
+        $this->publication->update(['rewritten_content' => $rewritten]);
+
         // Best-effort image upload
         $mediaId = null;
         if ($article->image_url) {

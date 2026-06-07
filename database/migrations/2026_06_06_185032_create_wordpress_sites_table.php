@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['user_id', 'is_active']);
+            $table->unique(['user_id', 'site_url']);
         });
     }
 
