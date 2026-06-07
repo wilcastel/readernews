@@ -36,8 +36,8 @@ class PublishToWordPress implements ShouldQueue
         $site = $this->publication->wordPressSite;
 
         // Resolve AI config
-        $aiConfig = AiConfig::where('is_active', true)->inRandomOrder()->first();
-        if (! $aiConfig) {
+        $configs = AiConfig::where('is_active', true)->inRandomOrder()->get();
+        if ($configs->isEmpty()) {
             throw new \RuntimeException('No active AI config');
         }
 
@@ -51,8 +51,22 @@ class PublishToWordPress implements ShouldQueue
         $articleText = $article->content ?? $article->summary ?? '';
         $finalPrompt = str_replace('{{content}}', $articleText, $promptTemplate);
 
-        // Generate rewritten content
-        $rewritten = $aiService->generateText($finalPrompt, $aiConfig);
+        // Try each config until one succeeds
+        $rewritten = null;
+        $lastError = null;
+        foreach ($configs as $aiConfig) {
+            try {
+                $rewritten = $aiService->generateText($finalPrompt, $aiConfig);
+                break;
+            } catch (\Throwable $e) {
+                Log::warning('WP rewrite failed with config, trying next', ['config' => $aiConfig->id, 'error' => $e->getMessage()]);
+                $lastError = $e;
+            }
+        }
+
+        if ($rewritten === null) {
+            throw $lastError ?? new \RuntimeException('All AI configs failed');
+        }
 
         // Resolve WordPress service (allows test mocking via app()->bind())
         $wpService = app(WordPressService::class, ['site' => $site]);
