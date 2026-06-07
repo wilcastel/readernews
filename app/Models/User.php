@@ -50,6 +50,11 @@ class User extends Authenticatable
         return $this->hasMany(Feed::class);
     }
 
+    public function wordPressSites()
+    {
+        return $this->hasMany(WordPressSite::class);
+    }
+
     public function folders()
     {
         return $this->hasMany(Folder::class);

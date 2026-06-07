@@ -91,6 +91,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Prompts
     Route::resource('prompts', \App\Http\Controllers\PromptController::class)->only(['index', 'store', 'update', 'destroy']);
 
+    // WordPress Publishing
+    Route::apiResource('wordpress-sites', \App\Http\Controllers\WordPressSiteController::class)
+        ->except(['show', 'create', 'edit'])
+        ->parameters(['wordpress-sites' => 'wordPressSite']);
+    Route::post('wordpress-sites/{wordPressSite}/test-connection', [\App\Http\Controllers\WordPressSiteController::class, 'testConnection'])->name('wordpress-sites.test-connection');
+    Route::post('articles/{article}/publish-to-wordpress', [\App\Http\Controllers\ArticleController::class, 'queueForPublish'])->name('articles.publish-to-wordpress');
+
     // AI Configs
     Route::get('/ai-configs/export', [\App\Http\Controllers\AiConfigController::class, 'export'])->name('ai-configs.export');
     Route::post('/ai-configs/import', [\App\Http\Controllers\AiConfigController::class, 'import'])->name('ai-configs.import');
