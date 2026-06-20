@@ -285,6 +285,7 @@ class ArticleController extends Controller
     {
         $request->validate([
             'wordpress_site_id' => ['required', 'exists:wordpress_sites,id'],
+            'rewritten_content' => ['nullable', 'string'],
         ]);
 
         $site = WordPressSite::where('id', $request->wordpress_site_id)
@@ -304,10 +305,21 @@ class ArticleController extends Controller
             return response()->json(['message' => 'Already queued or processing'], 409);
         }
 
-        // Reuse existing publication (e.g. previously failed) or create new one
+        $fields = [
+            'status' => PublicationStatus::Pending,
+            'error_message' => null,
+            'wp_post_id' => null,
+            'wp_post_url' => null,
+            'published_at' => null,
+        ];
+
+        if ($request->filled('rewritten_content')) {
+            $fields['rewritten_content'] = $request->rewritten_content;
+        }
+
         $publication = WordPressPublication::updateOrCreate(
             ['article_id' => $article->id, 'wordpress_site_id' => $site->id],
-            ['status' => PublicationStatus::Pending, 'error_message' => null, 'wp_post_id' => null, 'wp_post_url' => null, 'published_at' => null]
+            $fields
         );
 
         PublishToWordPress::dispatch($publication);
@@ -320,14 +332,16 @@ class ArticleController extends Controller
 
     public function fetchModalContent(Article $article)
     {
-        // Reuse the logic from show() to get context if needed, 
-        // but for a modal we mainly need the article and its relationships.
         $article->load(['feed', 'users' => function($q) {
             $q->where('user_id', auth()->id());
         }]);
 
-        // We return a blade view that only contains the content part of the article page
-        // We will create 'articles.modal-content' for this.
-        return view('articles.modal-content', compact('article'));
+        $wordPressSites = auth()->user()
+            ->wordPressSites()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('articles.modal-content', compact('article', 'wordPressSites'));
     }
 }

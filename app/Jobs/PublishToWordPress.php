@@ -35,44 +35,44 @@ class PublishToWordPress implements ShouldQueue
         $article = $this->publication->article;
         $site = $this->publication->wordPressSite;
 
-        // Resolve AI config
-        $configs = AiConfig::where('is_active', true)->inRandomOrder()->get();
-        if ($configs->isEmpty()) {
-            throw new \RuntimeException('No active AI config');
-        }
-
-        // Load prompt template
-        $prompt = Prompt::where('slug', 'wordpress-rewrite')->first();
-        $promptTemplate = $prompt
-            ? $prompt->content
-            : "Rewrite the following article as a professional blog post in HTML using <p>, <h2>, <h3> tags. Maintain factual accuracy. Return only HTML content.\n\n{{content}}";
-
-        // Build final prompt
-        $articleText = $article->content ?? $article->summary ?? '';
-        $finalPrompt = str_replace('{{content}}', $articleText, $promptTemplate);
-
-        // Try each config until one succeeds
-        $rewritten = null;
-        $lastError = null;
-        foreach ($configs as $aiConfig) {
-            try {
-                $rewritten = $aiService->generateText($finalPrompt, $aiConfig);
-                break;
-            } catch (\Throwable $e) {
-                Log::warning('WP rewrite failed with config, trying next', ['config' => $aiConfig->id, 'error' => $e->getMessage()]);
-                $lastError = $e;
+        // Use pre-written content if provided (e.g. published directly from AI Writer)
+        if ($this->publication->rewritten_content) {
+            $rewritten = $this->publication->rewritten_content;
+        } else {
+            $configs = AiConfig::where('is_active', true)->inRandomOrder()->get();
+            if ($configs->isEmpty()) {
+                throw new \RuntimeException('No active AI config');
             }
-        }
 
-        if ($rewritten === null) {
-            throw $lastError ?? new \RuntimeException('All AI configs failed');
+            $prompt = Prompt::where('slug', 'wordpress-rewrite')->first();
+            $promptTemplate = $prompt
+                ? $prompt->content
+                : "Rewrite the following article as a professional blog post in HTML using <p>, <h2>, <h3> tags. Maintain factual accuracy. Return only HTML content.\n\n{{content}}";
+
+            $articleText = $article->content ?? $article->summary ?? '';
+            $finalPrompt = str_replace('{{content}}', $articleText, $promptTemplate);
+
+            $rewritten = null;
+            $lastError = null;
+            foreach ($configs as $aiConfig) {
+                try {
+                    $rewritten = $aiService->generateText($finalPrompt, $aiConfig);
+                    break;
+                } catch (\Throwable $e) {
+                    Log::warning('WP rewrite failed with config, trying next', ['config' => $aiConfig->id, 'error' => $e->getMessage()]);
+                    $lastError = $e;
+                }
+            }
+
+            if ($rewritten === null) {
+                throw $lastError ?? new \RuntimeException('All AI configs failed');
+            }
+
+            $this->publication->update(['rewritten_content' => $rewritten]);
         }
 
         // Resolve WordPress service (allows test mocking via app()->bind())
         $wpService = app(WordPressService::class, ['site' => $site]);
-
-        // Persist rewritten content immediately so it's not lost if WP API fails
-        $this->publication->update(['rewritten_content' => $rewritten]);
 
         // Best-effort image upload
         $mediaId = null;

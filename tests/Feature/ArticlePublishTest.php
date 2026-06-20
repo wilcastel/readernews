@@ -153,6 +153,30 @@ class ArticlePublishTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_queue_for_publish_with_pre_written_content_persists_it(): void
+    {
+        Queue::fake();
+
+        $response = $this->actingAs($this->user)->postJson(
+            "/articles/{$this->article->id}/publish-to-wordpress",
+            [
+                'wordpress_site_id' => $this->site->id,
+                'rewritten_content' => '<p>Pre-written HTML content.</p>',
+            ]
+        );
+
+        $response->assertOk()->assertJsonFragment(['status' => 'queued']);
+
+        $this->assertDatabaseHas('wordpress_publications', [
+            'article_id' => $this->article->id,
+            'wordpress_site_id' => $this->site->id,
+            'status' => PublicationStatus::Pending->value,
+            'rewritten_content' => '<p>Pre-written HTML content.</p>',
+        ]);
+
+        Queue::assertPushed(PublishToWordPress::class);
+    }
+
     public function test_queue_for_publish_allows_republish_after_failed(): void
     {
         Queue::fake();
