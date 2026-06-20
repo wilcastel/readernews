@@ -420,12 +420,41 @@
                         },
                         body: JSON.stringify({ is_active: site.is_active })
                     }).catch(() => { site.is_active = !site.is_active; });
+                },
+
+                workerRunning: false,
+                workerLoading: false,
+
+                async initWorkerStatus() {
+                    try {
+                        const r = await fetch('{{ route("queue-worker.status") }}');
+                        const data = await r.json();
+                        this.workerRunning = data.running;
+                    } catch (e) {}
+                },
+
+                async toggleWorker() {
+                    this.workerLoading = true;
+                    try {
+                        const endpoint = this.workerRunning
+                            ? '{{ route("queue-worker.stop") }}'
+                            : '{{ route("queue-worker.start") }}';
+                        const r = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
+                        });
+                        const data = await r.json();
+                        this.workerRunning = data.running;
+                    } catch (e) {} finally {
+                        this.workerLoading = false;
+                    }
                 }
             };
         }
         </script>
         <div class="mt-8 bg-white dark:bg-surface-900 rounded-lg border border-slate-200 dark:border-surface-800 shadow-lg p-6 max-w-3xl"
-             x-data="wordPressSitesData()">
+             x-data="wordPressSitesData()"
+             x-init="initWorkerStatus()">
 
             <div class="flex justify-between items-center mb-6">
                 <div>
@@ -439,6 +468,27 @@
                         class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
                     <ion-icon :name="showAddForm ? 'close-outline' : 'add-outline'"></ion-icon>
                     <span x-text="showAddForm ? 'Cancel' : 'Add Site'"></span>
+                </button>
+            </div>
+
+            {{-- Queue Worker Toggle --}}
+            <div class="mb-5 flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-surface-950 border border-slate-200 dark:border-surface-700">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-2 h-2 rounded-full flex-shrink-0 transition-colors"
+                          :class="workerRunning ? 'bg-green-500 animate-pulse' : 'bg-slate-400 dark:bg-surface-600'"></span>
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Publishing Queue</span>
+                    <span class="text-xs text-slate-400 dark:text-slate-500"
+                          x-text="workerRunning ? 'Running — processing jobs' : 'Stopped'"></span>
+                </div>
+                <button @click="toggleWorker()"
+                        :disabled="workerLoading"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors disabled:opacity-50"
+                        :class="workerRunning
+                            ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40'
+                            : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/40'">
+                    <div x-show="workerLoading" class="animate-spin rounded-full h-3 w-3 border-2 border-current border-t-transparent" style="display:none;"></div>
+                    <ion-icon x-show="!workerLoading" :name="workerRunning ? 'stop-circle-outline' : 'play-circle-outline'" class="text-sm"></ion-icon>
+                    <span x-text="workerRunning ? 'Stop' : 'Start'"></span>
                 </button>
             </div>
 

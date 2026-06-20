@@ -91,6 +91,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Prompts
     Route::resource('prompts', \App\Http\Controllers\PromptController::class)->only(['index', 'store', 'update', 'destroy']);
 
+    // Queue Worker
+    Route::get('/queue-worker/status', [\App\Http\Controllers\QueueWorkerController::class, 'status'])->name('queue-worker.status');
+    Route::post('/queue-worker/start', [\App\Http\Controllers\QueueWorkerController::class, 'start'])->name('queue-worker.start');
+    Route::post('/queue-worker/stop', [\App\Http\Controllers\QueueWorkerController::class, 'stop'])->name('queue-worker.stop');
+
     // WordPress Publishing
     Route::apiResource('wordpress-sites', \App\Http\Controllers\WordPressSiteController::class)
         ->except(['show', 'create', 'edit'])
