@@ -42,6 +42,12 @@
             </div>
         @endif
 
+        @if($errors->any())
+            <div class="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                {{ $errors->first() }}
+            </div>
+        @endif
+
         <div class="bg-white dark:bg-surface-900 rounded-2xl shadow-sm border border-surface-200 dark:border-surface-800 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
@@ -56,7 +62,7 @@
                     </thead>
                     <tbody class="divide-y divide-surface-100 dark:divide-surface-800">
                         @foreach($feeds as $feed)
-                        <tr class="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors" x-data="{ editing: false, url: '{{ $feed->url }}', name: '{{ addslashes($feed->name) }}', selector: '{{ $feed->selector ?? '' }}' }">
+                        <tr class="hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors" x-data="{ editing: false, url: '{{ $feed->url }}', name: '{{ addslashes($feed->name) }}', selector: '{{ $feed->selector ?? '' }}', additionalUrls: @js($feed->sources->pluck('url')->implode("\n")) }">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
                                     @if($feed->favicon)
@@ -80,6 +86,14 @@
                                     <div x-show="editing" class="mt-1">
                                         <input type="text" x-model="selector" class="w-full px-2 py-1 text-[10px] rounded border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 dark:text-surface-300 placeholder-surface-400" placeholder="Optional CSS Selector (e.g. .news-list)">
                                     </div>
+                                    @if($feed->is_rss)
+                                        <div x-show="editing" class="mt-1">
+                                            <textarea x-model="additionalUrls" rows="3" class="w-full px-2 py-1 text-[10px] rounded border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 dark:text-surface-300 placeholder-surface-400" placeholder="Additional RSS URLs (one per line)"></textarea>
+                                        </div>
+                                        @if($feed->sources->isNotEmpty())
+                                            <span x-show="!editing" class="text-[10px] text-surface-400">+ {{ $feed->sources->count() }} additional {{ \Illuminate\Support\Str::plural('URL', $feed->sources->count()) }}</span>
+                                        @endif
+                                    @endif
                                     <span x-show="!editing && '{{ $feed->selector }}'" class="text-[10px] text-surface-400 font-mono">{{ $feed->selector }}</span>
                                 </div>
                             </td>
@@ -90,6 +104,9 @@
                                     <input type="hidden" name="url" :value="url">
                                     <input type="hidden" name="name" :value="name">
                                     <input type="hidden" name="selector" :value="selector">
+                                    @if($feed->is_rss)
+                                        <input type="hidden" name="additional_urls" :value="additionalUrls">
+                                    @endif
                                     <div class="relative inline-flex items-center p-1 rounded-lg bg-surface-100 dark:bg-surface-800 cursor-pointer" @click="if(!editing) { editing = true; }">
                                         
                                         <!-- Mode Switcher (Submit on change handled via UI feedback or separate button) -->

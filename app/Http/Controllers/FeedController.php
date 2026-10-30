@@ -279,7 +279,7 @@ class FeedController extends Controller
 
     public function manage()
     {
-        $feeds = auth()->user()->feeds()->latest()->get();
+        $feeds = auth()->user()->feeds()->with('sources')->latest()->get();
         return view('feeds.manage', compact('feeds'));
     }
 
@@ -291,8 +291,28 @@ class FeedController extends Controller
             'is_rss' => 'required|boolean',
             'url' => 'required|url',
             'name' => 'required|string|max:255',
-            'selector' => 'nullable|string|max:255'
+            'selector' => 'nullable|string|max:255',
+            'additional_urls' => 'nullable|string'
         ]);
+
+        // One URL per line: drop blanks, duplicates and the main URL itself
+        $additionalUrls = null;
+        if (array_key_exists('additional_urls', $validated)) {
+            $additionalUrls = collect(preg_split('/\R/', (string) $validated['additional_urls']))
+                ->map(fn ($line) => trim($line))
+                ->filter()
+                ->reject(fn ($line) => $line === $validated['url'])
+                ->unique()
+                ->values();
+
+            foreach ($additionalUrls as $line) {
+                if (!filter_var($line, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $line) || strlen($line) > 255) {
+                    return back()
+                        ->withErrors(['additional_urls' => "Invalid additional URL: {$line}"])
+                        ->withInput();
+                }
+            }
+        }
 
         $feed->update([
             'is_rss' => $validated['is_rss'],
@@ -301,6 +321,13 @@ class FeedController extends Controller
             'selector' => $validated['selector'] ?? null,
             'last_scraped_at' => null // Reset scrape time to force update
         ]);
+
+        if ($additionalUrls !== null) {
+            $feed->sources()->whereNotIn('url', $additionalUrls)->delete();
+            foreach ($additionalUrls as $sourceUrl) {
+                $feed->sources()->firstOrCreate(['url' => $sourceUrl]);
+            }
+        }
 
         return back()->with('success', 'Feed settings updated.');
     }
@@ -480,13 +507,14 @@ class FeedController extends Controller
 
     public function export()
     {
-        $feeds = auth()->user()->feeds()->with('folder')->get()->map(function($feed) {
+        $feeds = auth()->user()->feeds()->with(['folder', 'sources'])->get()->map(function($feed) {
             return [
                 'url' => $feed->url,
                 'name' => $feed->name,
                 'website_url' => $feed->website_url,
                 'is_rss' => $feed->is_rss,
                 'selector' => $feed->selector,
+                'additional_urls' => $feed->sources->pluck('url')->all(),
                 'folder_name' => $feed->folder ? $feed->folder->name : null,
                 // Add other transferable settings
             ];
@@ -546,6 +574,11 @@ class FeedController extends Controller
                         'selector' => $item['selector'] ?? null,
                         'folder_id' => $folderId
                     ]);
+                    foreach (array_unique((array) ($item['additional_urls'] ?? [])) as $sourceUrl) {
+                        if (is_string($sourceUrl) && $sourceUrl !== $item['url'] && filter_var($sourceUrl, FILTER_VALIDATE_URL)) {
+                            $feed->sources()->firstOrCreate(['url' => $sourceUrl]);
+                        }
+                    }
                     $count++;
                     
                     \App\Jobs\FetchFeedArticles::dispatch($feed);

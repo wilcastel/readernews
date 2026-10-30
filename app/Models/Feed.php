@@ -28,6 +28,25 @@ class Feed extends Model
         return $this->hasMany(Article::class);
     }
 
+    public function sources()
+    {
+        return $this->hasMany(FeedSource::class);
+    }
+
+    /**
+     * Every URL to fetch for this feed: the primary URL first, then the extra sources.
+     *
+     * @return string[]
+     */
+    public function allUrls(): array
+    {
+        return collect([$this->url])
+            ->merge($this->sources()->orderBy('id')->pluck('url'))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public function folder()
     {
         return $this->belongsTo(Folder::class);
