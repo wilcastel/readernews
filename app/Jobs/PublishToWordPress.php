@@ -6,6 +6,7 @@ use App\Enums\PublicationStatus;
 use App\Models\AiConfig;
 use App\Models\Prompt;
 use App\Models\WordPressPublication;
+use App\Services\ArticleImageResolver;
 use App\Services\OllamaService;
 use App\Services\WordPressService;
 use Illuminate\Bus\Queueable;
@@ -74,11 +75,12 @@ class PublishToWordPress implements ShouldQueue
         // Resolve WordPress service (allows test mocking via app()->bind())
         $wpService = app(WordPressService::class, ['site' => $site]);
 
-        // Best-effort image upload
+        // Best-effort image upload (resolver may swap a watermarked feed image for the page's og:image)
         $mediaId = null;
-        if ($article->image_url) {
+        $imageUrl = app(ArticleImageResolver::class)->resolve($article);
+        if ($imageUrl) {
             try {
-                $mediaId = $wpService->uploadMedia($article->image_url);
+                $mediaId = $wpService->uploadMedia($imageUrl);
             } catch (\Throwable $e) {
                 Log::warning('WP image upload failed', ['error' => $e->getMessage()]);
                 $mediaId = null;

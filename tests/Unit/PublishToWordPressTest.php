@@ -12,6 +12,7 @@ use Mockery;
 use App\Models\User;
 use App\Models\WordPressPublication;
 use App\Models\WordPressSite;
+use App\Services\ArticleImageResolver;
 use App\Services\OllamaService;
 use App\Services\WordPressService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -123,6 +124,30 @@ class PublishToWordPressTest extends TestCase
 
         $this->publication->refresh();
         $this->assertEquals(PublicationStatus::Published, $this->publication->status);
+    }
+
+    public function test_handle_uploads_resolved_image_instead_of_feed_image(): void
+    {
+        $resolver = $this->createMock(ArticleImageResolver::class);
+        $resolver->expects($this->once())
+            ->method('resolve')
+            ->willReturn('https://example.com/clean-image.jpg');
+        $this->app->instance(ArticleImageResolver::class, $resolver);
+
+        $aiService = $this->createMock(OllamaService::class);
+        $aiService->method('generateText')->willReturn('<p>Rewritten</p>');
+
+        $wpService = $this->createMock(WordPressService::class);
+        $wpService->expects($this->once())
+            ->method('uploadMedia')
+            ->with('https://example.com/clean-image.jpg')
+            ->willReturn(42);
+        $wpService->method('createDraftPost')->willReturn(['id' => 1, 'link' => 'https://myblog.example.com/?p=1']);
+
+        $this->app->bind(WordPressService::class, fn($app, $params) => $wpService);
+
+        $job = new PublishToWordPress($this->publication);
+        $job->handle($aiService);
     }
 
     public function test_image_upload_failure_does_not_abort_job(): void
