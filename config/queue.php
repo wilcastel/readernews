@@ -89,6 +89,14 @@ return [
             ],
         ],
 
+        'wordpress' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'wordpress',
+            'retry_after' => 600,
+            'after_commit' => false,
+        ],
+
     ],
 
     /*

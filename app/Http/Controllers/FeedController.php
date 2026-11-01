@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Feed;
 use App\Models\Article;
 use App\Models\Folder;
+use App\Models\WordPressSite;
 use App\Services\FeedDiscoveryService;
 use Illuminate\Support\Facades\Http;
 
@@ -15,7 +16,9 @@ class FeedController extends Controller
     public function index()
     {
         $pageTitle = "Unread Articles";
-        
+        $wordPressSites = $this->getWordPressSites();
+        $wpSiteIds = $wordPressSites->pluck('id');
+
         $articles = Article::whereHas('feed', function($q) {
                 $q->where('user_id', auth()->id());
             })
@@ -23,90 +26,128 @@ class FeedController extends Controller
             ->whereDoesntHave('users', function($q) {
                 $q->where('user_id', auth()->id())->where('is_read', true);
             })
-            ->with(['feed', 'users' => function($q) {
-                $q->where('user_id', auth()->id());
-            }])
+            ->with([
+                'feed',
+                'users' => function($q) {
+                    $q->where('user_id', auth()->id());
+                },
+                'wordpressPublications' => function($q) use ($wpSiteIds) {
+                    $q->whereIn('wordpress_site_id', $wpSiteIds)->latest();
+                },
+            ])
             ->latest('published_at')
             ->simplePaginate(30);
 
-        $feeds = auth()->user()->feeds; 
+        $feeds = auth()->user()->feeds;
 
         $context = ['source' => 'dashboard', 'id' => null];
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context'));
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context', 'wordPressSites'));
     }
 
     public function saved()
     {
         $pageTitle = "Saved for Later";
         $feeds = auth()->user()->feeds;
-        
+        $wordPressSites = $this->getWordPressSites();
+        $wpSiteIds = $wordPressSites->pluck('id');
+
         $articles = Article::whereHas('users', function($q) {
                 $q->where('user_id', auth()->id())->where('is_saved', true);
             })
-            ->with(['feed', 'users' => function($q) {
-                $q->where('user_id', auth()->id());
-            }])
+            ->with([
+                'feed',
+                'users' => function($q) {
+                    $q->where('user_id', auth()->id());
+                },
+                'wordpressPublications' => function($q) use ($wpSiteIds) {
+                    $q->whereIn('wordpress_site_id', $wpSiteIds)->latest();
+                },
+            ])
             ->latest('published_at')
             ->simplePaginate(30);
-            
+
         $context = ['source' => 'saved', 'id' => null];
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context'));
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context', 'wordPressSites'));
     }
 
     public function favorites()
     {
         $pageTitle = "Favorites";
         $feeds = auth()->user()->feeds;
-        
+        $wordPressSites = $this->getWordPressSites();
+        $wpSiteIds = $wordPressSites->pluck('id');
+
         $articles = Article::whereHas('users', function($q) {
                 $q->where('user_id', auth()->id())->where('is_favorite', true);
             })
-            ->with(['feed', 'users' => function($q) {
-                $q->where('user_id', auth()->id());
-            }])
+            ->with([
+                'feed',
+                'users' => function($q) {
+                    $q->where('user_id', auth()->id());
+                },
+                'wordpressPublications' => function($q) use ($wpSiteIds) {
+                    $q->whereIn('wordpress_site_id', $wpSiteIds)->latest();
+                },
+            ])
             ->latest('published_at')
             ->simplePaginate(30);
-            
+
         $context = ['source' => 'favorites', 'id' => null];
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context'));
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context', 'wordPressSites'));
     }
 
     public function folder(Folder $folder)
     {
         abort_if($folder->user_id !== auth()->id(), 403);
-        
+
         $pageTitle = $folder->name;
         $feeds = auth()->user()->feeds;
-        
-        $articles = Article::with(['feed', 'users' => function($q) {
-                 $q->where('user_id', auth()->id());
-            }])
+        $wordPressSites = $this->getWordPressSites();
+        $wpSiteIds = $wordPressSites->pluck('id');
+
+        $articles = Article::with([
+                'feed',
+                'users' => function($q) {
+                    $q->where('user_id', auth()->id());
+                },
+                'wordpressPublications' => function($q) use ($wpSiteIds) {
+                    $q->whereIn('wordpress_site_id', $wpSiteIds)->latest();
+                },
+            ])
             ->whereHas('feed', fn($q) => $q->where('folder_id', $folder->id)->where('user_id', auth()->id()))
             ->latest('published_at')
             ->simplePaginate(30);
-            
+
         $context = ['source' => 'folder', 'id' => $folder->id];
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context', 'folder'));
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'context', 'folder', 'wordPressSites'));
     }
 
     public function feed(Feed $feed)
     {
         abort_if($feed->user_id !== auth()->id(), 403);
-        
+
         $pageTitle = $feed->name;
         $feeds = auth()->user()->feeds;
-        
+        $wordPressSites = $this->getWordPressSites();
+        $wpSiteIds = $wordPressSites->pluck('id');
+
         $articles = $feed->articles()
-            ->with(['feed', 'users' => function($q) {
-                $q->where('user_id', auth()->id());
-            }])
+            ->with([
+                'feed',
+                'users' => function($q) {
+                    $q->where('user_id', auth()->id());
+                },
+                'wordpressPublications' => function($q) use ($wpSiteIds) {
+                    $q->whereIn('wordpress_site_id', $wpSiteIds)->latest();
+                },
+            ])
             ->latest('published_at')
             ->simplePaginate(30);
-            
+
         $nextFeed = $this->getNextFeed($feed);
         $context = ['source' => 'feed', 'id' => $feed->id];
-        
-        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'feed', 'context', 'nextFeed'));
+
+        return view('dashboard', compact('feeds', 'articles', 'pageTitle', 'feed', 'context', 'nextFeed', 'wordPressSites'));
     }
 
     public function refresh(Feed $feed)
@@ -196,6 +237,15 @@ class FeedController extends Controller
         return redirect()->route('folder.show', $folder)->with('success', 'All articles in ' . $folder->name . ' marked as read.');
     }
 
+    private function getWordPressSites(): \Illuminate\Database\Eloquent\Collection
+    {
+        return auth()->user()
+            ->wordPressSites()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+    }
+
     private function getNextFeed(Feed $currentFeed)
     {
         $user = auth()->user();
@@ -229,7 +279,7 @@ class FeedController extends Controller
 
     public function manage()
     {
-        $feeds = auth()->user()->feeds()->latest()->get();
+        $feeds = auth()->user()->feeds()->with('sources')->latest()->get();
         return view('feeds.manage', compact('feeds'));
     }
 
@@ -241,8 +291,28 @@ class FeedController extends Controller
             'is_rss' => 'required|boolean',
             'url' => 'required|url',
             'name' => 'required|string|max:255',
-            'selector' => 'nullable|string|max:255'
+            'selector' => 'nullable|string|max:255',
+            'additional_urls' => 'nullable|string'
         ]);
+
+        // One URL per line: drop blanks, duplicates and the main URL itself
+        $additionalUrls = null;
+        if (array_key_exists('additional_urls', $validated)) {
+            $additionalUrls = collect(preg_split('/\R/', (string) $validated['additional_urls']))
+                ->map(fn ($line) => trim($line))
+                ->filter()
+                ->reject(fn ($line) => $line === $validated['url'])
+                ->unique()
+                ->values();
+
+            foreach ($additionalUrls as $line) {
+                if (!filter_var($line, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $line) || strlen($line) > 255) {
+                    return back()
+                        ->withErrors(['additional_urls' => "Invalid additional URL: {$line}"])
+                        ->withInput();
+                }
+            }
+        }
 
         $feed->update([
             'is_rss' => $validated['is_rss'],
@@ -251,6 +321,13 @@ class FeedController extends Controller
             'selector' => $validated['selector'] ?? null,
             'last_scraped_at' => null // Reset scrape time to force update
         ]);
+
+        if ($additionalUrls !== null) {
+            $feed->sources()->whereNotIn('url', $additionalUrls)->delete();
+            foreach ($additionalUrls as $sourceUrl) {
+                $feed->sources()->firstOrCreate(['url' => $sourceUrl]);
+            }
+        }
 
         return back()->with('success', 'Feed settings updated.');
     }
@@ -430,13 +507,14 @@ class FeedController extends Controller
 
     public function export()
     {
-        $feeds = auth()->user()->feeds()->with('folder')->get()->map(function($feed) {
+        $feeds = auth()->user()->feeds()->with(['folder', 'sources'])->get()->map(function($feed) {
             return [
                 'url' => $feed->url,
                 'name' => $feed->name,
                 'website_url' => $feed->website_url,
                 'is_rss' => $feed->is_rss,
                 'selector' => $feed->selector,
+                'additional_urls' => $feed->sources->pluck('url')->all(),
                 'folder_name' => $feed->folder ? $feed->folder->name : null,
                 // Add other transferable settings
             ];
@@ -496,6 +574,11 @@ class FeedController extends Controller
                         'selector' => $item['selector'] ?? null,
                         'folder_id' => $folderId
                     ]);
+                    foreach (array_unique((array) ($item['additional_urls'] ?? [])) as $sourceUrl) {
+                        if (is_string($sourceUrl) && $sourceUrl !== $item['url'] && filter_var($sourceUrl, FILTER_VALIDATE_URL)) {
+                            $feed->sources()->firstOrCreate(['url' => $sourceUrl]);
+                        }
+                    }
                     $count++;
                     
                     \App\Jobs\FetchFeedArticles::dispatch($feed);

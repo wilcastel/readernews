@@ -138,7 +138,30 @@
                  selectedAiConfig: 'round-robin',
                 customInstructions: '',
                 result: '',
+                wpSites: [],
+                wpShowPicker: false,
+                wpPublishing: false,
+                wpPublished: false,
+                wpPublish(siteId) {
+                    this.wpPublishing = true;
+                    this.wpShowPicker = false;
+                    fetch('{{ route('articles.publish-to-wordpress', $article) }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                        body: JSON.stringify({ wordpress_site_id: siteId, rewritten_content: this.result })
+                    })
+                    .then(async r => {
+                        if (r.status === 409) { this.wpPublished = true; return; }
+                        if (!r.ok) { const d = await r.json(); throw new Error(d.message || 'Error'); }
+                        this.wpPublished = true;
+                    })
+                    .catch(e => alert('Error publishing: ' + e.message))
+                    .finally(() => { this.wpPublishing = false; });
+                },
                 init() {
+                    fetch('{{ route('wordpress-sites.index') }}', { headers: { 'Accept': 'application/json' } })
+                        .then(r => r.json())
+                        .then(data => { this.wpSites = data.filter(s => s.is_active); });
                      // Fetch prompts
                      fetch('{{ route('prompts.index') }}', { headers: { 'Accept': 'application/json' } })
                         .then(r => r.json())
@@ -265,12 +288,33 @@
                                 <div class="flex items-center justify-between mb-4">
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-surface-400">Generated Draft</h4>
                                     <div class="flex gap-2">
-                                        <button @click="result = ''" class="text-xs font-medium text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors">
+                                        <button @click="result = ''; wpPublished = false" class="text-xs font-medium text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors">
                                             <ion-icon name="refresh-outline"></ion-icon> Try Again
                                         </button>
                                         <button @click="navigator.clipboard.writeText(result); alert('Copied!')" class="text-xs font-medium bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-900 dark:text-white px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors">
                                             <ion-icon name="copy-outline"></ion-icon> Copy
                                         </button>
+                                        <template x-if="wpSites.length > 0">
+                                            <div class="relative">
+                                                <button @click="wpShowPicker = !wpShowPicker" :disabled="wpPublishing || wpPublished"
+                                                        class="text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-60"
+                                                        :class="wpPublished ? 'bg-green-600 text-white' : 'bg-primary-600 hover:bg-primary-700 text-white'">
+                                                    <ion-icon :name="wpPublished ? 'checkmark-outline' : (wpPublishing ? 'reload-outline' : 'cloud-upload-outline')"
+                                                              :class="wpPublishing ? 'animate-spin' : ''"></ion-icon>
+                                                    <span x-text="wpPublished ? 'Queued!' : 'Publish to WP'"></span>
+                                                </button>
+                                                <div x-show="wpShowPicker" @click.away="wpShowPicker = false"
+                                                     class="absolute right-0 bottom-full mb-1 bg-white dark:bg-surface-800 rounded-xl shadow-xl border border-surface-200 dark:border-surface-700 z-50 min-w-40 py-1">
+                                                    <template x-for="site in wpSites" :key="site.id">
+                                                        <button @click="wpPublish(site.id)"
+                                                                class="w-full text-left px-4 py-2 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center gap-2">
+                                                            <ion-icon name="globe-outline" class="text-primary-500 flex-shrink-0"></ion-icon>
+                                                            <span x-text="site.name"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
                                     </div>
                                 </div>
                                 <div class="bg-surface-50 dark:bg-surface-950 p-6 rounded-xl border border-surface-100 dark:border-surface-800 prose dark:prose-invert max-w-none whitespace-pre-wrap leading-relaxed shadow-inner" x-text="result"></div>
@@ -280,17 +324,65 @@
                 </div>
             </div>
             
-             <button @click="toggleFavorite()" 
+             <button @click="toggleFavorite()"
                 class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                 :class="favorite ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : 'text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'">
                 <ion-icon :name="favorite ? 'star' : 'star-outline'"></ion-icon>
             </button>
 
-             <button @click="toggleSaved()" 
+             <button @click="toggleSaved()"
                 class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                 :class="saved ? 'text-primary-700 bg-primary-100 dark:text-primary-300 dark:bg-primary-900/20' : 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/10 hover:bg-primary-100 dark:hover:bg-primary-900/30'">
                 <ion-icon :name="saved ? 'bookmark' : 'bookmark-outline'"></ion-icon>
             </button>
+
+            @if(isset($wordPressSites) && $wordPressSites->isNotEmpty())
+            <div x-data="{
+                showPicker: false,
+                publishing: false,
+                published: false,
+                sites: [],
+                init() {
+                    fetch('{{ route('wordpress-sites.index') }}', { headers: { 'Accept': 'application/json' } })
+                        .then(r => r.json())
+                        .then(data => { this.sites = data.filter(s => s.is_active); });
+                },
+                publish(siteId) {
+                    this.publishing = true;
+                    this.showPicker = false;
+                    fetch('{{ route('articles.publish-to-wordpress', $article) }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                        body: JSON.stringify({ wordpress_site_id: siteId })
+                    })
+                    .then(async r => {
+                        if (r.status === 409) { this.published = true; return; }
+                        if (!r.ok) { const d = await r.json(); throw new Error(d.message || 'Error'); }
+                        this.published = true;
+                    })
+                    .catch(e => alert('Error publishing: ' + e.message))
+                    .finally(() => { this.publishing = false; });
+                }
+            }" class="relative">
+                <button @click="showPicker = !showPicker" :disabled="publishing || published"
+                        class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-60"
+                        :class="published ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20' : 'text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700'">
+                    <ion-icon :name="published ? 'checkmark-circle-outline' : (publishing ? 'reload-outline' : 'cloud-upload-outline')"
+                              :class="publishing ? 'animate-spin' : ''"></ion-icon>
+                    <span x-text="published ? 'Queued!' : 'Publish'"></span>
+                </button>
+                <div x-show="showPicker" @click.away="showPicker = false"
+                     class="absolute right-0 mt-1 bg-white dark:bg-surface-800 rounded-xl shadow-xl border border-surface-200 dark:border-surface-700 z-50 min-w-44 py-1">
+                    <template x-for="site in sites" :key="site.id">
+                        <button @click="publish(site.id)"
+                                class="w-full text-left px-4 py-2 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-100 dark:hover:bg-surface-700 flex items-center gap-2">
+                            <ion-icon name="globe-outline" class="text-primary-500 flex-shrink-0"></ion-icon>
+                            <span x-text="site.name"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 

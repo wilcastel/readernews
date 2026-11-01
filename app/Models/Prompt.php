@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class Prompt extends Model
 {
-    protected $fillable = ['name', 'content', 'is_active'];
+    protected $fillable = ['name', 'slug', 'content', 'is_active'];
 }

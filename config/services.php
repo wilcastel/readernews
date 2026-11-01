@@ -40,4 +40,7 @@ return [
         'model' => env('OLLAMA_MODEL', 'qwen3:4b'),
     ],
 
+    // Domains whose feed images are watermarked; on publish, the article page's og:image is used instead
+    'og_image_domains' => array_filter(array_map('trim', explode(',', env('OG_IMAGE_DOMAINS', 'elcolombiano.com')))),
+
 ];

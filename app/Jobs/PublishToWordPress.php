@@ -1,0 +1,109 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Enums\PublicationStatus;
+use App\Models\AiConfig;
+use App\Models\Prompt;
+use App\Models\WordPressPublication;
+use App\Services\ArticleImageResolver;
+use App\Services\OllamaService;
+use App\Services\WordPressService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+
+class PublishToWordPress implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 3;
+
+    public int $timeout = 300;
+
+    public function __construct(private WordPressPublication $publication)
+    {
+        $this->onQueue('wordpress');
+    }
+
+    public function handle(OllamaService $aiService): void
+    {
+        $this->publication->update(['status' => PublicationStatus::Processing]);
+
+        $article = $this->publication->article;
+        $site = $this->publication->wordPressSite;
+
+        // Use pre-written content if provided (e.g. published directly from AI Writer)
+        if ($this->publication->rewritten_content) {
+            $rewritten = $this->publication->rewritten_content;
+        } else {
+            $configs = AiConfig::where('is_active', true)->inRandomOrder()->get();
+            if ($configs->isEmpty()) {
+                throw new \RuntimeException('No active AI config');
+            }
+
+            $prompt = Prompt::where('slug', 'wordpress-rewrite')->first();
+            $promptTemplate = $prompt
+                ? $prompt->content
+                : "Rewrite the following article as a professional blog post in HTML using <p>, <h2>, <h3> tags. Maintain factual accuracy. Return only HTML content.\n\n{{content}}";
+
+            $articleText = $article->content ?? $article->summary ?? '';
+            $finalPrompt = str_replace('{{content}}', $articleText, $promptTemplate);
+
+            $rewritten = null;
+            $lastError = null;
+            foreach ($configs as $aiConfig) {
+                try {
+                    $rewritten = $aiService->generateText($finalPrompt, $aiConfig);
+                    break;
+                } catch (\Throwable $e) {
+                    Log::warning('WP rewrite failed with config, trying next', ['config' => $aiConfig->id, 'error' => $e->getMessage()]);
+                    $lastError = $e;
+                }
+            }
+
+            if ($rewritten === null) {
+                throw $lastError ?? new \RuntimeException('All AI configs failed');
+            }
+
+            $this->publication->update(['rewritten_content' => $rewritten]);
+        }
+
+        // Resolve WordPress service (allows test mocking via app()->bind())
+        $wpService = app(WordPressService::class, ['site' => $site]);
+
+        // Best-effort image upload (resolver may swap a watermarked feed image for the page's og:image)
+        $mediaId = null;
+        $imageUrl = app(ArticleImageResolver::class)->resolve($article);
+        if ($imageUrl) {
+            try {
+                $mediaId = $wpService->uploadMedia($imageUrl);
+            } catch (\Throwable $e) {
+                Log::warning('WP image upload failed', ['error' => $e->getMessage()]);
+                $mediaId = null;
+            }
+        }
+
+        // Create draft post
+        $post = $wpService->createDraftPost($article->title, $rewritten, $mediaId);
+
+        $this->publication->update([
+            'status' => PublicationStatus::Published,
+            'wp_post_id' => $post['id'],
+            'wp_post_url' => $post['link'],
+            'rewritten_content' => $rewritten,
+            'published_at' => now(),
+        ]);
+    }
+
+    public function failed(\Throwable $e): void
+    {
+        $this->publication->update([
+            'status' => PublicationStatus::Failed,
+            'error_message' => $e->getMessage(),
+        ]);
+    }
+}

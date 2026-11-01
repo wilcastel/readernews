@@ -14,9 +14,11 @@ class SettingsController extends Controller
     {
         $settings = Setting::where('group', 'ai')->pluck('value', 'key');
         $prompts = \App\Models\Prompt::all(); // Fetch all prompts
-        
+        $wordPressSites = auth()->user()->wordPressSites()->orderBy('name')->get();
+
         return view('settings.index', [
             'prompts' => $prompts,
+            'wordPressSites' => $wordPressSites,
             'provider' => $settings['ai_provider'] ?? 'ollama',
             'ollama_url' => $settings['ollama_url'] ?? 'http://localhost:11434',
             'ollama_model' => $settings['ollama_model'] ?? 'qwen3:4b',
