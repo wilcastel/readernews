@@ -31,7 +31,7 @@ Este documento detalla los requisitos técnicos, instalación y configuración d
    ```
 5. Instalar dependencias Frontend y compilar:
    ```bash
-   npm install && npm run build
+   pnpm install && pnpm run build
    ```
 6. Enlace simbólico para almacenamiento:
    ```bash
@@ -93,4 +93,4 @@ La aplicación gestiona múltiples proveedores de IA a través de la tabla `ai_c
 | **Feeds no actualizan** | Cron Job no configurado | Verifica que `schedule:run` se ejecute cada minuto. |
 | **Error 500 en IA** | Timeout o API Key inválida | Revisa `storage/logs/laravel.log`. Aumenta `timeout` en `config/database.php` o verifica créditos de API. |
 | **Imágenes rotas** | Enlace simbólico faltante | Ejecuta `php artisan storage:link`. |
-| **Estilos CSS rotos** | Assets no compilados | Ejecuta `npm run build` en el servidor o sube la carpeta `public/build` desde local. |
+| **Estilos CSS rotos** | Assets no compilados | Ejecuta `pnpm run build` en el servidor o sube la carpeta `public/build` desde local. |

@@ -30,9 +30,5 @@ Thumbs.db
 .mcp/
 mcp.json
 .cursor/
-# pnpm
-pnpm-lock.yaml
-pnpm-workspace.yaml
-
 # atl internal
 .atl/
