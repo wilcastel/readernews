@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\WordPressSite;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class WordPressService
 {
@@ -28,8 +29,8 @@ class WordPressService
                 return null;
             }
 
-            $filename = basename(parse_url($imageUrl, PHP_URL_PATH)) ?: 'image.jpg';
             $contentType = $download->header('Content-Type') ?: 'image/jpeg';
+            $filename = $this->mediaFilename($imageUrl, $contentType);
 
             $url = rtrim($this->site->site_url, '/') . '/wp-json/wp/v2/media';
 
@@ -40,13 +41,45 @@ class WordPressService
                 ->post($url);
 
             if ($response->failed()) {
+                Log::warning('WP media upload rejected', [
+                    'image_url' => $imageUrl,
+                    'filename' => $filename,
+                    'status' => $response->status(),
+                    'body' => mb_substr($response->body(), 0, 500),
+                ]);
                 return null;
             }
 
             return $response->json('id');
         } catch (\Throwable $e) {
+            Log::warning('WP media upload failed', ['image_url' => $imageUrl, 'error' => $e->getMessage()]);
             return null;
         }
+    }
+
+    /**
+     * WordPress rejects uploads without a valid image extension. CDN URLs such as
+     * Brightspot's (".../quality/75/?url=...") have none, so derive it from the Content-Type.
+     */
+    private function mediaFilename(string $imageUrl, string $contentType): string
+    {
+        $filename = basename((string) parse_url($imageUrl, PHP_URL_PATH)) ?: 'image';
+
+        $extensions = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'image/avif' => 'avif',
+        ];
+
+        if (in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'], true)) {
+            return $filename;
+        }
+
+        $mime = strtolower(trim(explode(';', $contentType)[0]));
+
+        return $filename . '.' . ($extensions[$mime] ?? 'jpg');
     }
 
     public function createDraftPost(string $title, string $content, ?int $featuredMediaId): array

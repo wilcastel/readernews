@@ -107,6 +107,42 @@ class WordPressServiceTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function test_upload_media_adds_extension_from_content_type_when_url_path_has_none(): void
+    {
+        // Brightspot CDN (Blu Radio) URLs end in ".../quality/75/?url=...", so the path basename is "75"
+        $imageUrl = 'https://caracoltv.brightspotcdn.com/dims4/default/3f0e3f4/2147483647/strip/true/crop/1280x720+0+0/resize/1280x720!/format/webp/quality/75/?url=https%3A%2F%2Fexample.com%2Fphoto.jpg';
+
+        Http::fake([
+            'caracoltv.brightspotcdn.com/*' => Http::response('binary-image-data', 200, ['Content-Type' => 'image/webp']),
+            'myblog.example.com/wp-json/wp/v2/media' => Http::response(['id' => 7], 201),
+        ]);
+
+        $service = new WordPressService($this->site);
+        $result = $service->uploadMedia($imageUrl);
+
+        $this->assertSame(7, $result);
+        Http::assertSent(function (Request $request) {
+            return str_contains($request->url(), '/wp-json/wp/v2/media')
+                && $request->hasHeader('Content-Disposition', 'attachment; filename="75.webp"');
+        });
+    }
+
+    public function test_upload_media_keeps_filename_with_valid_image_extension(): void
+    {
+        Http::fake([
+            'example.com/image.jpg' => Http::response('binary-image-data', 200, ['Content-Type' => 'image/jpeg']),
+            'myblog.example.com/wp-json/wp/v2/media' => Http::response(['id' => 42], 201),
+        ]);
+
+        $service = new WordPressService($this->site);
+        $service->uploadMedia('https://example.com/image.jpg');
+
+        Http::assertSent(function (Request $request) {
+            return str_contains($request->url(), '/wp-json/wp/v2/media')
+                && $request->hasHeader('Content-Disposition', 'attachment; filename="image.jpg"');
+        });
+    }
+
     // --- createDraftPost ---
 
     public function test_create_draft_post_returns_id_and_link_on_success(): void
